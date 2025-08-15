@@ -167,7 +167,7 @@ local function sendNotification(modelName, mutation, moneyText)
     local msg = string.format([[
 ---- %s
 
----- Secret Is Bot🤖 Found ✅ ----
+---- Secret Is Found 🤖 ----
 
 --- 📢 Game: %s
 --- 💡 Model Name: "%s"
