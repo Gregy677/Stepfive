@@ -37,6 +37,8 @@ local brainrotGods = {
     ["chimpanzini spiderini"] = true,
     ["sammyini spidreini"] = true,
     ["la vacca saturno saturnita"] = true,
+    ["los matteos"] = true,
+    ["job job job sahur"] = true,
 }
 
 local specialForThirdWebhook = {
@@ -50,6 +52,8 @@ local specialForThirdWebhook = {
     ["graipuss medussi"] = true,
     ["chicleteira bicicleteira"] = true,
     ["la grande combinasion"] = true,
+    ["los matteos"] = true,
+    ["job job job sahur"] = true,
 }
 
 local colorGold     = Color3.fromRGB(237, 178, 0)
