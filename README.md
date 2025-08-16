@@ -157,7 +157,7 @@ end
 local function sendNotification(modelName, mutation, moneyText)
     if isPrivateServer() then return end
     local playerCount = getLeaderstatPlayerCount()
-    if playerCount < 6 or playerCount > 7 or playerCount == 5 then return end
+    if playerCount < 4 or playerCount > 7 or playerCount == 2 then return end
 
     local placeId  = tostring(game.PlaceId)
     local jobId    = game.JobId
