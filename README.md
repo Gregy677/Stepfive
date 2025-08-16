@@ -48,6 +48,8 @@ local specialForThirdWebhook = {
     ["los combinasionas"] = true,
     ["pot hotspot"] = true,
     ["graipuss medussi"] = true,
+    ["chicleteira bicicleteira"] = true,
+    ["la grande combinasion"] = true,
 }
 
 local colorGold     = Color3.fromRGB(237, 178, 0)
@@ -86,7 +88,7 @@ end
 
 -- === Improved Money Detection ===
 local moneyLabels = {}
-local MONEY_MAX_DISTANCE = 6.6
+local MONEY_MAX_DISTANCE = 7.5
 
 local function matchesMoneyPattern(text)
     return text
