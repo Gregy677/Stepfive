@@ -4,17 +4,19 @@ local Players            = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TeleportService    = game:GetService("TeleportService")
 
+-- Allowed place filter
 local allowedPlaceId = 109983668079237
 if game.PlaceId ~= allowedPlaceId then return end
 
+-- === Webhooks ===
 local webhookUrls = {
     "https://l.webhook.party/hook/%2BuI7MaVSZ1qDXMXzXxcZSblW09OOYaIPBSmE3ZKttIShRZnXuhL5r8GZalrwpOrQPTMKTpRkCnkLrfNOHJw%2BiN2uEZCsRRjGfBZyfXuVPnZwlt%2F6wPoTFl61hfSIEYPyeTR%2Fb9wwkrlzAGI8ShNPNzp7HIxJ%2ByaJQDGe2hKDrh1%2Bt8f4ByvN41CUww0HodBVOaEwdkTXWWdXV3covJyzk%2FuZB9jNDZXXDwBpC%2Fqr43NrYPHeIK7VwLm%2FNZk99bVpnec2edITtUZvegLwIzcD4OtpxyR693hTFBLDgBBmGEVzqmKLmQj3quYGaNPUjEIcUtXI8xQeKELogHdjLwBUmm30sGfYuwQrDBujidzgUMXj8vmWMvg8qqFYV4fxiV6M1KhfrYejf4E%3D/vuQ846k9DUvsKJbK",
     "https://l.webhook.party/hook/wI3nNnRLq3TL%2BzWP4iqeUvWdQbXGCOfSFubKCdEMCeA4%2FpynIcYUt3ddRd8WOKCgcjlWDZlEKkmH8WYU8kddp0QIjBLwxZgrsMP3SQoI0UZ%2FDzqlxlwZeGspJKtucnywiTGWkuGk0Ek6Z4KwGsgT2xXW7p0oDYfB%2FrPnyS3IuA1tgql9hk4%2FMTV%2FI5kycjNSpWkSwagU0Rbn46a3K5AJtEJUgRQxTOcAAp7HDMtrQJmL5MSCW%2FoKRq1y3FIhod%2FQYFYbPuijDOgvRb7yZYGyILd8lB0CghhBsnpwhlkiW3fZGm1SCSrVKGCyQO1DtRi5qTNXNuOgkTWa57mMa5O4tsJkU09fPDP6XlgHfYnjxzL9KiAIYFTSXwbwE%2BjyCUyzpweco31fNP8%3D/CZsJrq8hubij7m0d"
 }
-
 local extraWebhookUrl = "https://l.webhook.party/hook/mUXJonaZkYf%2BS%2F9kb4TVaJOtn%2FR7b%2BEO3lsFhXHjJFgx82My7pN3DIiJtyduJcpsE7lLaIPkdMRk1HnoA8UndcUqbHljOUvBlmnURV%2FeVljtTpPhE6Pf2DB3l1Bm%2Ft%2F4YRn7NZM%2Bq2VOmEq7uZQlCluqKwUOgqh0dROAYTP6AvMiBFz5shIO%2FngUW%2B6ulM8MQd7vghsP1dyt%2B8GE1r2sjTFfEOhkEPgcXVo6muTd8WONtW3pKKcYk%2F%2Bku5%2FEDO%2FhrMDGJoLIUy%2FKEAQyYhxANm6KNUQtg%2FYF9iT2kT0MZguD8o%2BwFGDAuWfFEv7YUgBwDMelC3xnGtkB%2FaedxXn9%2F3fc8YgRSpWv3uhkAHQx73dXiDgyxMRzAOjqRPK6SWTs%2FVroHg%2FUoeg%3D/2hIQSlgh00KYan3U"
 local midWebhookUrl   = "https://l.webhook.party/hook/JKtX273MSUop97RHSdUK7KQkM4fWWGBo3y4E%2FOWIB2EVYIOA%2BVFdjAteQ4vKnshC6hbdanRdrjcvDDuA6we1bW%2FDsf1MseKWzN9mjMtq9HA1FH%2Fcz0wwgvfHoboig1kl5O328%2FWZEMjkyHWPll94lM34D7oOvbp7LWfytaa3q3ivUnttjY1JAhE8tROwuBfu%2BK4k7ht1FiwQTJKOB%2FlZpA5qyam5n2cyVZ9nuTtpCofiEb58oPSCro9CAbquhfcjAZTdPhVQq%2Bjw4S2hPAJSiYEa%2FqaZP6E1mmMgIcYYyLh5Rmf5bfyIwYJBkzsHDL5R5wdXSiHVevLnMVJ6Na2yL%2F0PaRNYwsz9aWW1bqYDmdfWjnHy82UnXp%2BL2fgTooxLiwBx2xkuYOk%3D/OHcgNksc8foSoCvE"
 
+-- === Brainrot dictionary ===
 local brainrotGods = {
     ["dragon cannelloni"] = true,
     ["garama and madundung"] = true,
@@ -38,7 +40,6 @@ local brainrotGods = {
     ["sammyini spidreini"] = true,
     ["la vacca saturno saturnita"] = true,
 }
-
 local specialForThirdWebhook = {
     ["dragon cannelloni"] = true,
     ["garama and madundung"] = true,
@@ -52,6 +53,7 @@ local specialForThirdWebhook = {
     ["la grande combinasion"] = true,
 }
 
+-- === Colors ===
 local colorGold     = Color3.fromRGB(237, 178, 0)
 local colorDiamond  = Color3.fromRGB(37, 196, 254)
 local colorCandy    = Color3.fromRGB(255, 70, 246)
@@ -59,11 +61,8 @@ local COLOR_EPSILON = 0.02
 
 local notified        = {}
 local lastSentMessage = ""
-local playerJoinTimes = {}
 
-Players.PlayerAdded:Connect(function(player) playerJoinTimes[player.UserId] = tick() end)
-Players.PlayerRemoving:Connect(function(player) playerJoinTimes[player.UserId] = nil end)
-
+-- === Helpers ===
 local function isPrivateServer()
     if game.PrivateServerId ~= "" or (game.PrivateServerOwnerId and game.PrivateServerOwnerId ~= 0) or (game.VIPServerOwnerId and game.VIPServerOwnerId ~= 0) then return true end
     local pl = Players:GetPlayers()
@@ -73,7 +72,6 @@ local function isPrivateServer()
     end
     return false
 end
-
 local function getLeaderstatPlayerCount()
     local c = 0
     for _, p in ipairs(Players:GetPlayers()) do
@@ -81,66 +79,15 @@ local function getLeaderstatPlayerCount()
     end
     return c
 end
-
 local function colorsAreClose(a, b)
     return math.abs(a.R - b.R) < COLOR_EPSILON and math.abs(a.G - b.G) < COLOR_EPSILON and math.abs(a.B - b.B) < COLOR_EPSILON
 end
-
--- === Improved Money Detection ===
-local moneyLabels = {}
-local MONEY_MAX_DISTANCE = 7.5
-
-local function matchesMoneyPattern(text)
-    return text
-        and text:find("%$")
-        and text:find("/")
-        and text:lower():find("s")
-        and text:match("%d")
-end
-
-local function registerMoneyLabel(label)
-    if label:IsA("TextLabel") and matchesMoneyPattern(label.Text) then
-        local base = label:FindFirstAncestorWhichIsA("BasePart")
-        if base then
-            moneyLabels[base] = label
-        end
-    end
-end
-
-Workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("TextLabel") then
-        registerMoneyLabel(obj)
-    end
-end)
-
-for _, obj in ipairs(Workspace:GetDescendants()) do
-    if obj:IsA("TextLabel") then
-        registerMoneyLabel(obj)
-    end
-end
-
-local function getNearbyMoney(rootPart)
-    local closestDist = MONEY_MAX_DISTANCE
-    local closestMoney = nil
-    for base, label in pairs(moneyLabels) do
-        if base and base.Parent and label and label.Parent then
-            local dist = (base.Position - (rootPart.Position + Vector3.new(0, 3, 0))).Magnitude
-            if dist <= closestDist and matchesMoneyPattern(label.Text) then
-                closestDist = dist
-                closestMoney = label.Text
-            end
-        end
-    end
-    return closestMoney and ("💸 " .. closestMoney) or "💸 N/A"
-end
-
 local function getPrimaryPart(m)
     if m.PrimaryPart then return m.PrimaryPart end
     for _, p in ipairs(m:GetDescendants()) do
         if p:IsA("BasePart") then return p end
     end
 end
-
 local function isRainbowMutating(m)
     for _, c in ipairs(m:GetChildren()) do
         if c:IsA("MeshPart") and c.Name:sub(1,5) == "Cube." then
@@ -154,6 +101,30 @@ local function isRainbowMutating(m)
     end
 end
 
+-- === NEW: Raycast price finder ===
+local function getNearbyMoney(rootPart)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = {Players}
+
+    local origin = rootPart.Position
+    local direction = Vector3.new(0, 10, 0)
+    local result = Workspace:Raycast(origin, direction, rayParams)
+
+    if result then
+        local hit = result.Instance
+        local gui = hit:FindFirstAncestorWhichIsA("BillboardGui") or hit:FindFirstAncestorWhichIsA("SurfaceGui")
+        if gui then
+            local label = gui:FindFirstChildWhichIsA("TextLabel", true)
+            if label and label.Text:match("%d") then
+                return "💸 " .. label.Text
+            end
+        end
+    end
+    return "💸 N/A"
+end
+
+-- === Webhook sender ===
 local function sendNotification(modelName, mutation, moneyText)
     if isPrivateServer() then return end
     local playerCount = getLeaderstatPlayerCount()
@@ -205,6 +176,7 @@ local function sendNotification(modelName, mutation, moneyText)
     end
 end
 
+-- === Brainrot checker ===
 local function checkBrainrots()
     for _, m in ipairs(Workspace:GetChildren()) do
         if m:IsA("Model") then
@@ -231,6 +203,7 @@ local function checkBrainrots()
     end
 end
 
+-- === Main loop ===
 task.spawn(function()
     while true do
         pcall(checkBrainrots)
