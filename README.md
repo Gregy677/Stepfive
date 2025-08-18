@@ -1,8 +1,8 @@
-local HttpService        = game:GetService("HttpService")
-local Workspace          = game:GetService("Workspace")
-local Players            = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
-local TeleportService    = game:GetService("TeleportService")
+local TeleportService = game:GetService("TeleportService")
 
 local allowedPlaceId = 109983668079237
 if game.PlaceId ~= allowedPlaceId then return end
@@ -13,7 +13,7 @@ local webhookUrls = {
 }
 
 local extraWebhookUrl = "https://l.webhook.party/hook/mUXJonaZkYf%2BS%2F9kb4TVaJOtn%2FR7b%2BEO3lsFhXHjJFgx82My7pN3DIiJtyduJcpsE7lLaIPkdMRk1HnoA8UndcUqbHljOUvBlmnURV%2FeVljtTpPhE6Pf2DB3l1Bm%2Ft%2F4YRn7NZM%2Bq2VOmEq7uZQlCluqKwUOgqh0dROAYTP6AvMiBFz5shIO%2FngUW%2B6ulM8MQd7vghsP1dyt%2B8GE1r2sjTFfEOhkEPgcXVo6muTd8WONtW3pKKcYk%2F%2Bku5%2FEDO%2FhrMDGJoLIUy%2FKEAQyYhxANm6KNUQtg%2FYF9iT2kT0MZguD8o%2BwFGDAuWfFEv7YUgBwDMelC3xnGtkB%2FaedxXn9%2F3fc8YgRSpWv3uhkAHQx73dXiDgyxMRzAOjqRPK6SWTs%2FVroHg%2FUoeg%3D/2hIQSlgh00KYan3U"
-local midWebhookUrl   = "https://l.webhook.party/hook/JKtX273MSUop97RHSdUK7KQkM4fWWGBo3y4E%2FOWIB2EVYIOA%2BVFdjAteQ4vKnshC6hbdanRdrjcvDDuA6we1bW%2FDsf1MseKWzN9mjMtq9HA1FH%2Fcz0wwgvfHoboig1kl5O328%2FWZEMjkyHWPll94lM34D7oOvbp7LWfytaa3q3ivUnttjY1JAhE8tROwuBfu%2BK4k7ht1FiwQTJKOB%2FlZpA5qyam5n2cyVZ9nuTtpCofiEb58oPSCro9CAbquhfcjAZTdPhVQq%2Bjw4S2hPAJSiYEa%2FqaZP6E1mmMgIcYYyLh5Rmf5bfyIwYJBkzsHDL5R5wdXSiHVevLnMVJ6Na2yL%2F0PaRNYwsz9aWW1bqYDmdfWjnHy82UnXp%2BL2fgTooxLiwBx2xkuYOk%3D/OHcgNksc8foSoCvE"
+local midWebhookUrl = "https://l.webhook.party/hook/JKtX273MSUop97RHSdUK7KQkM4fWWGBo3y4E%2FOWIB2EVYIOA%2BVFdjAteQ4vKnshC6hbdanRdrjcvDDuA6we1bW%2FDsf1MseKWzN9mjMtq9HA1FH%2Fcz0wwgvfHoboig1kl5O328%2FWZEMjkyHWPll94lM34D7oOvbp7LWfytaa3q3ivUnttjY1JAhE8tROwuBfu%2BK4k7ht1FiwQTJKOB%2FlZpA5qyam5n2cyVZ9nuTtpCofiEb58oPSCro9CAbquhfcjAZTdPhVQq%2Bjw4S2hPAJSiYEa%2FqaZP6E1mmMgIcYYyLh5Rmf5bfyIwYJBkzsHDL5R5wdXSiHVevLnMVJ6Na2yL%2F0PaRNYwsz9aWW1bqYDmdfWjnHy82UnXp%2BL2fgTooxLiwBx2xkuYOk%3D/OHcgNksc8foSoCvE"
 
 local brainrotGods = {
     ["dragon cannelloni"] = true,
@@ -56,14 +56,16 @@ local specialForThirdWebhook = {
     ["job job job sahur"] = true,
 }
 
-local colorGold     = Color3.fromRGB(237, 178, 0)
-local colorDiamond  = Color3.fromRGB(37, 196, 254)
-local colorCandy    = Color3.fromRGB(255, 70, 246)
+local colorGold = Color3.fromRGB(237, 178, 0)
+local colorDiamond = Color3.fromRGB(37, 196, 254)
+local colorCandy = Color3.fromRGB(255, 70, 246)
 local COLOR_EPSILON = 0.02
 
-local notified        = {}
+local notified = {}
 local lastSentMessage = ""
 local playerJoinTimes = {}
+local foundBrainrots = {}
+local finders = {} -- Table to track who found each brainrot
 
 Players.PlayerAdded:Connect(function(player) playerJoinTimes[player.UserId] = tick() end)
 Players.PlayerRemoving:Connect(function(player) playerJoinTimes[player.UserId] = nil end)
@@ -92,60 +94,6 @@ local function colorsAreClose(a, b)
     return math.abs(a.R - b.R) < COLOR_EPSILON and math.abs(a.G - b.G) < COLOR_EPSILON and math.abs(a.B - b.B) < COLOR_EPSILON
 end
 
--- === Money Detection (Upward Scan) ===
-local moneyLabels = {}
-
-local function matchesMoneyPattern(text)
-    return text
-        and text:find("%$")
-        and text:find("/")
-        and text:lower():find("s")
-        and text:match("%d")
-end
-
-local function registerMoneyLabel(label)
-    if label:IsA("TextLabel") and matchesMoneyPattern(label.Text) then
-        local base = label:FindFirstAncestorWhichIsA("BasePart")
-        if base then
-            moneyLabels[base] = label
-        end
-    end
-end
-
-Workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("TextLabel") then
-        registerMoneyLabel(obj)
-    end
-end)
-
-for _, obj in ipairs(Workspace:GetDescendants()) do
-    if obj:IsA("TextLabel") then
-        registerMoneyLabel(obj)
-    end
-end
-
--- Scan upward from model root
-local function getNearbyMoney(rootPart)
-    if not rootPart then return "💸 N/A" end
-
-    local step = 10
-    local maxHeight = 200
-    local startPos = rootPart.Position
-
-    for height = step, maxHeight, step do
-        local checkPos = startPos + Vector3.new(0, height, 0)
-        for base, label in pairs(moneyLabels) do
-            if base and base.Parent and label and label.Parent then
-                local dist = (base.Position - checkPos).Magnitude
-                if dist <= step and matchesMoneyPattern(label.Text) then
-                    return "💸 " .. label.Text
-                end
-            end
-        end
-    end
-    return "💸 N/A"
-end
-
 local function getPrimaryPart(m)
     if m.PrimaryPart then return m.PrimaryPart end
     for _, p in ipairs(m:GetDescendants()) do
@@ -166,59 +114,117 @@ local function isRainbowMutating(m)
     end
 end
 
-local function sendNotification(modelName, mutation, moneyText)
+local function getClosestPlayer(position)
+    local closestPlayer = nil
+    local closestDistance = math.huge
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        local character = player.Character
+        if character then
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            if humanoidRootPart then
+                local distance = (humanoidRootPart.Position - position).Magnitude
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestPlayer = player
+                end
+            end
+        end
+    end
+    
+    return closestPlayer
+end
+
+local function sendNotification(brainrotList)
     if isPrivateServer() then return end
     local playerCount = getLeaderstatPlayerCount()
     if playerCount < 1 then return end
 
-    local placeId  = tostring(game.PlaceId)  
-    local jobId    = game.JobId  
-    local joinLink = string.format("https://chillihub1.github.io/chillihub-joiner/?placeId=%s&gameInstanceId=%s", placeId, jobId)  
-    local teleportCode = string.format("game:GetService('TeleportService'):TeleportToPlaceInstance(%s, '%s', game.Players.LocalPlayer)", placeId, jobId)  
-    local gameName = "Unknown"  
-    pcall(function() gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name end)  
+    local placeId = tostring(game.PlaceId)
+    local jobId = game.JobId
+    local joinLink = string.format("https://www.roblox.com/games/%s?jobId=%s", placeId, jobId)
+    local teleportCode = string.format("game:GetService('TeleportService'):TeleportToPlaceInstance(%s, '%s', game.Players.LocalPlayer)", placeId, jobId)
+    local gameName = "Unknown"
+    pcall(function() gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name end)
 
-    local msg = string.format([[
+    -- Format the brainrot list with finders
+    local brainrotText = ""
+    for name, data in pairs(brainrotList) do
+        local finderName = "Unknown"
+        if data.finder then
+            finderName = data.finder.Name
+        end
+        brainrotText = brainrotText .. string.format("%s x%d (Found by: %s)\n", name, data.count, finderName)
+    end
 
----- %s
+    local embed = {
+        ["title"] = "📌 Brainrot Finder Alert",
+        ["description"] = "Multiple brainrots detected in this server! Jump fast before they're gone.",
+        ["color"] = 65280, -- Green color
+        ["fields"] = {
+            {
+                ["name"] = "📌 User",
+                ["value"] = "AJANAUTOFARM",
+                ["inline"] = true
+            },
+            {
+                ["name"] = "📌 Player Count",
+                ["value"] = tostring(playerCount),
+                ["inline"] = true
+            },
+            {
+                ["name"] = "📋 Brainrot Log",
+                ["value"] = brainrotText,
+                ["inline"] = false
+            },
+            {
+                ["name"] = "📌 Server Link",
+                ["value"] = joinLink,
+                ["inline"] = false
+            },
+            {
+                ["name"] = "📌 Join Script",
+                ["value"] = "game:GetService('TeleportService')",
+                ["inline"] = false
+            }
+        },
+        ["footer"] = {
+            ["text"] = "🤖 Found by Ken Bot"
+        }
+    }
 
----- 🤖Secret Is Found By Ken Bot 🤖 ----
+    local message = {
+        content = "@everyone RARE BRAINROT DETECTED!",
+        embeds = {embed}
+    }
 
---- 📢 Game: %s
---- 💡 Model Name: "%s"
---- 🎨 Mutation: %s
---- 💸 Money/s: %s
---- 👥 Player Count: %d/8
+    local data = HttpService:JSONEncode(message)
+    local headers = { ["Content-Type"] = "application/json" }
+    local req = (syn and syn.request) or (http and http.request) or request or http_request
+    if not req then return end
 
-%s
-]], joinLink, gameName, modelName, mutation, moneyText or "N/A", playerCount, teleportCode)
+    -- Check if any special brainrots are present
+    local hasSpecial = false
+    for name, _ in pairs(brainrotList) do
+        if specialForThirdWebhook[name:lower()] then
+            hasSpecial = true
+            break
+        end
+    end
 
-    if msg == lastSentMessage then return end  
-    lastSentMessage = msg  
+    if hasSpecial then
+        pcall(function() req({ Url = midWebhookUrl, Method = "POST", Headers = headers, Body = data }) end)
+        pcall(function() req({ Url = extraWebhookUrl, Method = "POST", Headers = headers, Body = data }) end)
+    end
 
-    local data    = HttpService:JSONEncode({ content = msg })  
-    local headers = { ["Content-Type"] = "application/json" }  
-    local req     = (syn and syn.request) or (http and http.request) or request or http_request  
-    if not req then return end  
-
-    local lowerModel = modelName:lower()  
-    if lowerModel == "la grande combinasion" then  
-        for _, url in ipairs(webhookUrls) do  
-            pcall(function() req({ Url = url, Method = "POST", Headers = headers, Body = data }) end)  
-        end  
-        pcall(function() req({ Url = midWebhookUrl,   Method = "POST", Headers = headers, Body = data }) end)  
-        pcall(function() req({ Url = extraWebhookUrl, Method = "POST", Headers = headers, Body = data }) end)  
-    elseif specialForThirdWebhook[lowerModel] then  
-        pcall(function() req({ Url = midWebhookUrl,   Method = "POST", Headers = headers, Body = data }) end)  
-        pcall(function() req({ Url = extraWebhookUrl, Method = "POST", Headers = headers, Body = data }) end)  
-    else  
-        for _, url in ipairs(webhookUrls) do  
-            pcall(function() req({ Url = url, Method = "POST", Headers = headers, Body = data }) end)  
-        end  
+    for _, url in ipairs(webhookUrls) do
+        pcall(function() req({ Url = url, Method = "POST", Headers = headers, Body = data }) end)
     end
 end
 
 local function checkBrainrots()
+    foundBrainrots = {} -- Reset found brainrots each scan
+    
     for _, m in ipairs(Workspace:GetChildren()) do
         if m:IsA("Model") then
             local lowerName = m.Name:lower()
@@ -227,26 +233,38 @@ local function checkBrainrots()
                 if root then
                     local id = m:GetDebugId()
                     if not notified[id] then
-                        local col = root.Color
-                        local mut = "🕳️"
-                        if colorsAreClose(col, colorGold) then mut = "🌕 Gold"
-                        elseif colorsAreClose(col, colorDiamond) then mut = "💎 Diamond"
-                        elseif colorsAreClose(col, colorCandy) then mut = "🍬 Candy"
-                        elseif isRainbowMutating(m) then mut = "🌈 Rainbow" end
-
-                        local money = getNearbyMoney(root)  
-                        sendNotification(m.Name, mut, money)  
-                        notified[id] = true  
-                    end  
-                end  
-            end  
-        end  
+                        -- Determine who found it (closest player)
+                        local finder = getClosestPlayer(root.Position)
+                        
+                        -- Count this brainrot
+                        if not foundBrainrots[m.Name] then
+                            foundBrainrots[m.Name] = {
+                                count = 1,
+                                finder = finder
+                            }
+                        else
+                            foundBrainrots[m.Name].count = foundBrainrots[m.Name].count + 1
+                            -- Only update finder if we don't have one yet
+                            if not foundBrainrots[m.Name].finder and finder then
+                                foundBrainrots[m.Name].finder = finder
+                            end
+                        end
+                        notified[id] = true
+                    end
+                end
+            end
+        end
+    end
+    
+    -- If we found any brainrots, send the notification
+    if next(foundBrainrots) ~= nil then
+        sendNotification(foundBrainrots)
     end
 end
 
 task.spawn(function()
     while true do
         pcall(checkBrainrots)
-        task.wait(0.1)
+        task.wait(5) -- Check every 5 seconds instead of 0.1 to avoid spamming
     end
 end)
