@@ -182,7 +182,7 @@ local function sendNotification(modelName, mutation, moneyText)
 
 ---- %s
 
----- Secret Is Found By Gooner🥒 ----
+---- 🤖Secret Is Found By Ken Bot 🤖 ----
 
 --- 📢 Game: %s
 --- 💡 Model Name: "%s"
