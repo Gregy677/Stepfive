@@ -1,24 +1,22 @@
---// Services
-local HttpService = game:GetService("HttpService")
-local Workspace = game:GetService("Workspace")
-
---// Allowed Place Check (change this to your game ID)
+--// Config
 local allowedPlaceId = 109983668079237
 if game.PlaceId ~= allowedPlaceId then return end
 
---// Your Discord Webhook(s) (put the full original Discord webhooks here)
 local webhookUrls = {
     "https://discord.com/api/webhooks/1403158157798408282/aQuEVITwhbCOEQ3HiwhupRivEaJGM2DlfTuaIPJRIZwZZs25xfArlyZFGS9xKucxkuxD",
     "https://discord.com/api/webhooks/1403158157798408282/aQuEVITwhbCOEQ3HiwhupRivEaJGM2DlfTuaIPJRIZwZZs25xfArlyZFGS9xKucxkuxD"
 }
 
---// Regex Patterns to detect $/s text
+-- Prefer syn.request but fallback to http_request
+local request = (syn and syn.request) or (http and http.request) or request
+
+--// Regex for $/s
 local moneyPatterns = {
-    "%$[%d,]+%.?%d*[kKmMbBtT]?%s*/s",          -- ex: $500K/s
-    "%$[%d,]+%.?%d*[kKmMbBtT]?%s*per%s*second" -- ex: $1.2M per second
+    "%$[%d,]+%.?%d*[kKmMbBtT]?%s*/s",
+    "%$[%d,]+%.?%d*[kKmMbBtT]?%s*per%s*second"
 }
 
---// Convert text into proper number + format
+-- Convert text into number + format
 local function extractMoneyValue(text)
     local num, suffix = text:match("([%d,]+%.?%d*)([kKmMbBtT]?)")
     if not num then return "N/A" end
@@ -45,7 +43,7 @@ local function extractMoneyValue(text)
     end
 end
 
---// Detect money labels inside a model
+-- Detect money labels inside a model
 local function getMoneyLabel(model)
     for _, descendant in ipairs(model:GetDescendants()) do
         if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
@@ -60,32 +58,35 @@ local function getMoneyLabel(model)
     return "N/A"
 end
 
---// Send embeds to Discord webhook
+-- Send embed to Discord webhook
 local function sendWebhook(modelName, moneyPerSecond, position)
     local embed = {
         ["title"] = "💰 Money/s Model Found",
-        ["description"] = "A model with money/s value was detected in the game.",
-        ["color"] = 65280, -- green
+        ["description"] = "Detected a model with a money/s value",
+        ["color"] = 65280,
         ["fields"] = {
             {["name"] = "📦 Model", ["value"] = modelName, ["inline"] = true},
             {["name"] = "💵 Money/s", ["value"] = moneyPerSecond, ["inline"] = true},
             {["name"] = "📍 Position", ["value"] = tostring(position), ["inline"] = false}
         },
-        ["footer"] = {
-            ["text"] = "Scanner Bot"
-        },
+        ["footer"] = {["text"] = "Scanner Bot"},
         ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
     }
 
-    local payload = HttpService:JSONEncode({embeds = {embed}})
+    local payload = game:GetService("HttpService"):JSONEncode({embeds = {embed}})
 
     for _, url in ipairs(webhookUrls) do
-        HttpService:PostAsync(url, payload, Enum.HttpContentType.ApplicationJson, false)
+        request({
+            Url = url,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = payload
+        })
     end
 end
 
---// One-time scan across workspace
-for _, model in ipairs(Workspace:GetDescendants()) do
+-- One-time scan
+for _, model in ipairs(game:GetService("Workspace"):GetDescendants()) do
     if model:IsA("Model") then
         local moneyValue = getMoneyLabel(model)
         if moneyValue ~= "N/A" then
