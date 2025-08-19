@@ -23,21 +23,34 @@ local lastMoneyScan = 0
 local moneyLabels = {}
 local detectedHighValues = {} -- Track already detected high values
 
+-- Words to ignore in money labels
+local ignoreWords = {
+    "cash", "offline", "font", "color", "rgb", "hex", "profit", "income", 
+    "total", "balance", "wallet", "bank", "collected", "earned", "gained"
+}
+
 -- Money pattern detection
 local function matchesMoneyPattern(text)
     if not text or type(text) ~= "string" then return false end
     
-    -- Patterns to match money formats
+    -- Check for ignored words
+    local lowerText = text:lower()
+    for _, word in ipairs(ignoreWords) do
+        if lowerText:find(word) then
+            return false
+        end
+    end
+    
+    -- Patterns to match money formats (only per-second values)
     local patterns = {
-        "%$[%d,]+%.?%d*[kKmMbBtT]?/?s?",          -- $1M/s, $500k/s
+        "%$[%d,]+%.?%d*[kKmMbBtT]/s",             -- $1M/s, $500k/s
         "%$[%d,]+%.?%d*%s*/%s*s",                 -- $1,000 /s
         "%$[%d,]+%.?%d*%s*per%s*second",          -- $1,000 per second
-        "[%d,]+%.?%d*%s*[kKmMbBtT]?%s*%$/?s?",    -- 1M $/s
-        "%+%s*[%d,]+%.?%d*%s*[kKmMbBtT]?%s*%$/?s?", -- + 1M $/s
-        "[%d,]+%.?%d*%s*[kKmMbBtT]?%s*%/s",       -- 1M/s
+        "[%d,]+%.?%d*%s*[kKmMbBtT]%s*%$/s",       -- 1M $/s
+        "[%d,]+%.?%d*%s*[kKmMbBtT]%s*%/s",        -- 1M/s
+        "%+%s*[%d,]+%.?%d*%s*[kKmMbBtT]%s*%$/s",  -- + 1M $/s
     }
     
-    text = text:lower()
     for _, pattern in ipairs(patterns) do
         if text:match(pattern) then
             return true
@@ -52,7 +65,7 @@ local function extractMoneyValue(text)
     if not text then return 0, "N/A" end
     
     -- Find the numeric part with possible k/M/b suffixes
-    local numPart, suffix = text:match("([%d,]+%.?%d*)([kKmMbBtT]?)")
+    local numPart, suffix = text:match("([%d,]+%.?%d*)([kKmMbBtT])")
     if not numPart then return 0, "N/A" end
     
     -- Remove commas and convert to number
@@ -88,6 +101,48 @@ local function extractMoneyValue(text)
     return num, formattedValue
 end
 
+-- Find the model that contains the money text
+local function findModelForMoneyText(moneyObject)
+    if not moneyObject then return "Unknown" end
+    
+    -- Try to find the parent model
+    local current = moneyObject
+    while current and current ~= Workspace do
+        if current:IsA("Model") then
+            return current.Name
+        end
+        current = current.Parent
+    end
+    
+    -- If no model found, look for the closest model to the text position
+    local textPosition
+    if moneyObject:IsA("BasePart") then
+        textPosition = moneyObject.Position
+    elseif moneyObject:IsA("GuiObject") then
+        textPosition = moneyObject.AbsolutePosition
+    else
+        return "Unknown"
+    end
+    
+    local closestModel = nil
+    local closestDistance = math.huge
+    
+    for _, model in ipairs(Workspace:GetChildren()) do
+        if model:IsA("Model") then
+            local primaryPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+            if primaryPart then
+                local distance = (primaryPart.Position - textPosition).Magnitude
+                if distance < 20 and distance < closestDistance then
+                    closestDistance = distance
+                    closestModel = model
+                end
+            end
+        end
+    end
+    
+    return closestModel and closestModel.Name or "Unknown"
+end
+
 -- Scan for money labels in the workspace
 local function scanForMoneyLabels()
     if tick() - lastMoneyScan < moneyScanCooldown then return end
@@ -113,7 +168,9 @@ local function scanForMoneyLabels()
                     lastScan = tick(),
                     value = formattedValue,
                     numericValue = numericValue,
-                    position = base:IsA("BasePart") and base.Position or base.AbsolutePosition
+                    position = base:IsA("BasePart") and base.Position or base.AbsolutePosition,
+                    rawText = obj.Text,
+                    modelName = findModelForMoneyText(obj)
                 }
             end
         end
@@ -138,6 +195,7 @@ local function findClosestMoney(position)
             if dist < detectionRange and dist < closestDistance then
                 closestDistance = dist
                 closestMoney = data
+                closestMoney.basePart = base
             end
         end
     end
@@ -174,7 +232,7 @@ local function getPlayerList()
 end
 
 -- Send notification to webhook
-local function sendMoneyNotification(moneyValue, distance, position)
+local function sendMoneyNotification(moneyValue, distance, position, modelName, rawText)
     if isPrivateServer() then return end
     
     -- Check if we've already notified about this value
@@ -199,8 +257,8 @@ local function sendMoneyNotification(moneyValue, distance, position)
         ["embeds"] = {{
             ["title"] = "💰 High Money Value Detected 💰",
             ["description"] = string.format(
-                "**Game:** %s\n**Money Value:** %s\n**Distance:** %.1f studs\n**Position:** (%.1f, %.1f, %.1f)\n**Players (%d):** %s",
-                gameName, moneyValue, distance, position.X, position.Y, position.Z, playerCount, playerList
+                "**Game:** %s\n**Money Value:** %s\n**Model Name:** %s\n**Distance:** %.1f studs\n**Position:** (%.1f, %.1f, %.1f)\n**Players (%d):** %s\n**Raw Text:** %s",
+                gameName, moneyValue, modelName or "Unknown", distance, position.X, position.Y, position.Z, playerCount, playerList, rawText or "N/A"
             ),
             ["color"] = 0xFFD700, -- gold color
             ["fields"] = {
@@ -239,7 +297,13 @@ local function monitorHighMoneyValues()
                     local closestMoney, distance = findClosestMoney(rootPart.Position)
                     
                     if closestMoney then
-                        sendMoneyNotification(closestMoney.value, distance, closestMoney.position)
+                        sendMoneyNotification(
+                            closestMoney.value, 
+                            distance, 
+                            closestMoney.position, 
+                            closestMoney.modelName, 
+                            closestMoney.rawText
+                        )
                     end
                 end
             end
