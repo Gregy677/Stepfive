@@ -16,70 +16,134 @@ local webhookUrls = {
 local extraWebhookUrl = "https://l.webhook.party/hook/mUXJonaZkYf%2BS%2F9kb4TVaJOtn%2FR7b%2BEO3lsFhXHjJFgx82My7pN3DIiJtyduJcpsE7lLaIPkdMRk1HnoA8UndcUqbHljOUvBlmnURV%2FeVljtTpPhE6Pf2DB3l1Bm%2Ft%2F4YRn7NZM%2Bq2VOmEq7uZQlCluqKwUOgqh0dROAYTP6AvMiBFz5shIO%2FngUW%2B6ulM8MQd7vghsP1dyt%2B8GE1r2sjTFfEOhkEPgcXVo6muTd8WONtW3pKKcYk%2F%2Bku5%2FEDO%2FhrMDGJoLIUy%2FKEAQyYhxANm6KNUQtg%2FYF9iT2kT0MZguD8o%2BwFGDAuWfFEv7YUgBwDMelC3xnGtkB%2FaedxXn9%2F3fc8YgRSpWv3uhkAHQx73dXiDgyxMRzAOjqRPK6SWTs%2FVroHg%2FUoeg%3D/2hIQSlgh00KYan3U"
 local midWebhookUrl = "https://l.webhook.party/hook/JKtX273MSUop97RHSdUK7KQkM4fWWGBo3y4E%2FOWIB2EVYIOA%2BVFdjAteQ4vKnshC6hbdanRdrjcvDDuA6we1bW%2FDsf1MseKWzN9mjMtq9HA1FH%2Fcz0wwgvfHoboig1kl5O328%2FWZEMjkyHWPll94lM34D7oOvbp7LWfytaa3q3ivUnttjY1JAhE8tROwuBfu%2BK4k7ht1FiwQTJKOB%2FlZpA5qyam5n2cyVZ9nuTtpCofiEb58oPSCro9CAbquhfcjAZTdPhVQq%2Bjw4S2hPAJSiYEa%2FqaZP6E1mmMgIcYYyLh5Rmf5bfyIwYJBkzsHDL5R5wdXSiHVevLnMVJ6Na2yL%2F0PaRNYwsz9aWW1bqYDmdfWjnHy82UnXp%2BL2fgTooxLiwBx2xkuYOk%3D/OHcgNksc8foSoCvE"
 
-local brainrotGods = {
-    ["dragon cannelloni"] = true,
-    ["garama and madundung"] = true,
-    ["esok sekolah"] = true,
-    ["los hotspotsitos"] = true,
-    ["nuclearo dinossauro"] = true,
-    ["los combinasionas"] = true,
-    ["la grande combinasion"] = true,
-    ["chicleteira bicicleteira"] = true,
-    ["secret lucky block"] = true,
-    ["pot hotspot"] = true,
-    ["karkerkar kurkur"] = true,
-    ["los tungtungtungcitos"] = true,
-    ["graipuss medussi"] = true,
-    ["las vaquitas saturnitas"] = true,
-    ["las tralaleritas"] = true,
-    ["los tralaleritos"] = true,
-    ["agarrini la palini"] = true,
-    ["torrtuginni dragonfrutini"] = true,
-    ["chimpanzini spiderini"] = true,
-    ["sammyini spidreini"] = true,
-    ["la vacca saturno saturnita"] = true,
-    ["los matteos"] = true,
-    ["job job job sahur"] = true,
-}
-
-local specialForThirdWebhook = {
-    ["dragon cannelloni"] = true,
-    ["garama and madundung"] = true,
-    ["esok sekolah"] = true,
-    ["los hotspotsitos"] = true,
-    ["nuclearo dinossauro"] = true,
-    ["los combinasionas"] = true,
-    ["pot hotspot"] = true,
-    ["graipuss medussi"] = true,
-    ["chicleteira bicicleteira"] = true,
-    ["la grande combinasion"] = true,
-    ["los matteos"] = true,
-    ["job job job sahur"] = true,
-}
-
-local colorGold = Color3.fromRGB(237, 178, 0)
-local colorDiamond = Color3.fromRGB(37, 196, 254)
-local colorCandy = Color3.fromRGB(255, 70, 246)
-local COLOR_EPSILON = 0.02
-
--- Tracking variables
-local notifiedModels = {}
-local playerJoinTimes = {}
-local moneyLabels = {}
+-- Money detection configuration
+local moneyScanCooldown = 2 -- seconds between scans
+local detectionRange = 50 -- studs
 local lastMoneyScan = 0
-local moneyScanCooldown = 5 -- seconds
+local moneyLabels = {}
+local detectedHighValues = {} -- Track already detected high values
 
--- Player tracking
-Players.PlayerAdded:Connect(function(player)
-    playerJoinTimes[player.UserId] = {
-        joinTime = tick(),
-        name = player.Name
+-- Money pattern detection
+local function matchesMoneyPattern(text)
+    if not text or type(text) ~= "string" then return false end
+    
+    -- Patterns to match money formats
+    local patterns = {
+        "%$[%d,]+%.?%d*[kKmMbBtT]?/?s?",          -- $1M/s, $500k/s
+        "%$[%d,]+%.?%d*%s*/%s*s",                 -- $1,000 /s
+        "%$[%d,]+%.?%d*%s*per%s*second",          -- $1,000 per second
+        "[%d,]+%.?%d*%s*[kKmMbBtT]?%s*%$/?s?",    -- 1M $/s
+        "%+%s*[%d,]+%.?%d*%s*[kKmMbBtT]?%s*%$/?s?", -- + 1M $/s
+        "[%d,]+%.?%d*%s*[kKmMbBtT]?%s*%/s",       -- 1M/s
     }
-end)
+    
+    text = text:lower()
+    for _, pattern in ipairs(patterns) do
+        if text:match(pattern) then
+            return true
+        end
+    end
+    
+    return false
+end
 
-Players.PlayerRemoving:Connect(function(player)
-    playerJoinTimes[player.UserId] = nil
-end)
+-- Extract and format money value
+local function extractMoneyValue(text)
+    if not text then return 0, "N/A" end
+    
+    -- Find the numeric part with possible k/M/b suffixes
+    local numPart, suffix = text:match("([%d,]+%.?%d*)([kKmMbBtT]?)")
+    if not numPart then return 0, "N/A" end
+    
+    -- Remove commas and convert to number
+    local num = tonumber((numPart:gsub(",", "")))
+    if not num then return 0, "N/A" end
+    
+    -- Apply suffix multiplier
+    suffix = suffix:lower()
+    if suffix == "k" then
+        num = num * 1000
+    elseif suffix == "m" then
+        num = num * 1000000
+    elseif suffix == "b" then
+        num = num * 1000000000
+    elseif suffix == "t" then
+        num = num * 1000000000000
+    end
+    
+    -- Format the number nicely
+    local formattedValue
+    if num >= 1000000000000 then
+        formattedValue = string.format("$%.1fT/s", num/1000000000000)
+    elseif num >= 1000000000 then
+        formattedValue = string.format("$%.1fB/s", num/1000000000)
+    elseif num >= 1000000 then
+        formattedValue = string.format("$%.1fM/s", num/1000000)
+    elseif num >= 1000 then
+        formattedValue = string.format("$%.1fK/s", num/1000)
+    else
+        formattedValue = string.format("$%d/s", num)
+    end
+    
+    return num, formattedValue
+end
+
+-- Scan for money labels in the workspace
+local function scanForMoneyLabels()
+    if tick() - lastMoneyScan < moneyScanCooldown then return end
+    lastMoneyScan = tick()
+    
+    -- Clear old labels that might no longer exist
+    for base, data in pairs(moneyLabels) do
+        if not base or not base.Parent then
+            moneyLabels[base] = nil
+        end
+    end
+    
+    -- Scan all descendants for money labels
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox")) and matchesMoneyPattern(obj.Text) then
+            local base = obj:FindFirstAncestorWhichIsA("BasePart") or obj
+            local numericValue, formattedValue = extractMoneyValue(obj.Text)
+            
+            -- Only track values over 1M/s
+            if numericValue >= 1000000 then
+                moneyLabels[base] = {
+                    label = obj,
+                    lastScan = tick(),
+                    value = formattedValue,
+                    numericValue = numericValue,
+                    position = base:IsA("BasePart") and base.Position or base.AbsolutePosition
+                }
+            end
+        end
+    end
+end
+
+-- Find the closest money label to a position
+local function findClosestMoney(position)
+    local closestMoney = nil
+    local closestDistance = math.huge
+    local currentTime = tick()
+    
+    for base, data in pairs(moneyLabels) do
+        if base and base.Parent and data.label and data.label.Parent then
+            -- Skip stale entries
+            if currentTime - data.lastScan > moneyScanCooldown * 3 then
+                moneyLabels[base] = nil
+                continue
+            end
+            
+            local dist = (data.position - position).Magnitude
+            if dist < detectionRange and dist < closestDistance then
+                closestDistance = dist
+                closestMoney = data
+            end
+        end
+    end
+    
+    return closestMoney, closestDistance
+end
 
 -- Utility functions
 local function isPrivateServer()
@@ -101,182 +165,6 @@ local function isPrivateServer()
     return false
 end
 
-local function getLeaderstatPlayerCount()
-    local count = 0
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player:FindFirstChild("leaderstats") then 
-            count += 1 
-        end
-    end
-    return count
-end
-
-local function colorsAreClose(a, b)
-    return math.abs(a.R - b.R) < COLOR_EPSILON 
-        and math.abs(a.G - b.G) < COLOR_EPSILON 
-        and math.abs(a.B - b.B) < COLOR_EPSILON
-end
-
--- Enhanced money detection
-local function matchesMoneyPattern(text)
-    if not text then return false end
-    
-    -- Patterns to match:
-    -- $500k/s, $1M/s, $1b/s, $1,000/s, etc.
-    local patterns = {
-        "%$[%d,]+%.?%d*[kKmMbBtT]?/?s?",  -- $1M/s, $500k/s
-        "%$[%d,]+%.?%d*%s*/%s*s",         -- $1,000 /s
-        "%$[%d,]+%.?%d*%s*per%s*second",  -- $1,000 per second
-        "[%d,]+%.?%d*%s*[kKmMbBtT]?%s*%$/?s?" -- 1M $/s
-    }
-    
-    for _, pattern in ipairs(patterns) do
-        if text:match(pattern) then
-            return true
-        end
-    end
-    
-    return false
-end
-
-local function extractMoneyValue(text)
-    if not text then return "N/A" end
-    
-    -- Find the numeric part with possible k/M/b suffixes
-    local value = text:match("([%d,]+%.?%d*)([kKmMbBtT]?)")
-    if not value then return "N/A" end
-    
-    local num, suffix = value:match("([%d,]+%.?%d*)([kKmMbBtT]?)")
-    if not num then return "N/A" end
-    
-    -- Remove commas and convert to number
-    num = tonumber((num:gsub(",", "")))
-    if not num then return "N/A" end
-    
-    -- Apply suffix multiplier
-    suffix = suffix:lower()
-    if suffix == "k" then
-        num = num * 1000
-    elseif suffix == "m" then
-        num = num * 1000000
-    elseif suffix == "b" then
-        num = num * 1000000000
-    elseif suffix == "t" then
-        num = num * 1000000000000
-    end
-    
-    -- Format the number nicely
-    if num >= 1000000000000 then
-        return string.format("$%.1fT/s", num/1000000000000)
-    elseif num >= 1000000000 then
-        return string.format("$%.1fB/s", num/1000000000)
-    elseif num >= 1000000 then
-        return string.format("$%.1fM/s", num/1000000)
-    elseif num >= 1000 then
-        return string.format("$%.1fK/s", num/1000)
-    else
-        return string.format("$%d/s", num)
-    end
-end
-
-local function scanForMoneyLabels()
-    -- Only scan periodically to avoid performance issues
-    if tick() - lastMoneyScan < moneyScanCooldown then return end
-    lastMoneyScan = tick()
-    
-    moneyLabels = {} -- Clear old labels
-    
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-            if matchesMoneyPattern(obj.Text) then
-                local base = obj:FindFirstAncestorWhichIsA("BasePart")
-                if base then
-                    moneyLabels[base] = {
-                        label = obj,
-                        lastScan = tick(),
-                        value = extractMoneyValue(obj.Text)
-                    }
-                end
-            end
-        end
-    end
-end
-
-Workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        if matchesMoneyPattern(obj.Text) then
-            local base = obj:FindFirstAncestorWhichIsA("BasePart")
-            if base then
-                moneyLabels[base] = {
-                    label = obj,
-                    lastScan = tick(),
-                    value = extractMoneyValue(obj.Text)
-                }
-            end
-        end
-    end
-end)
-
-local function getNearbyMoney(rootPart)
-    if not rootPart then return "💸 N/A" end
-    
-    -- First try to find money labels attached to the model itself
-    for _, descendant in ipairs(rootPart:GetDescendants()) do
-        if (descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox")) and matchesMoneyPattern(descendant.Text) then
-            return "💸 " .. extractMoneyValue(descendant.Text)
-        end
-    end
-    
-    -- Then scan nearby money labels in workspace
-    scanForMoneyLabels()
-    
-    local closestMoney = nil
-    local closestDistance = math.huge
-    local currentTime = tick()
-    
-    for base, data in pairs(moneyLabels) do
-        if base and base.Parent and data.label and data.label.Parent then
-            -- Skip stale entries
-            if currentTime - data.lastScan > moneyScanCooldown * 2 then
-                moneyLabels[base] = nil
-                continue
-            end
-            
-            local dist = (base.Position - rootPart.Position).Magnitude
-            if dist < 50 and dist < closestDistance then
-                closestDistance = dist
-                closestMoney = data.value
-            end
-        end
-    end
-    
-    return closestMoney and "💸 " .. closestMoney or "💸 N/A"
-end
-
-local function getPrimaryPart(model)
-    if model.PrimaryPart then return model.PrimaryPart end
-    for _, part in ipairs(model:GetDescendants()) do
-        if part:IsA("BasePart") then return part end
-    end
-    return nil
-end
-
-local function isRainbowMutating(model)
-    for _, child in ipairs(model:GetChildren()) do
-        if child:IsA("MeshPart") and child.Name:sub(1,5) == "Cube." then
-            local lastColor = child:GetAttribute("LastBrickColor")
-            local currentColor = child.BrickColor.Color
-            
-            if lastColor and (Vector3.new(lastColor.R, lastColor.G, lastColor.B) - Vector3.new(currentColor.R, currentColor.G, currentColor.B)).Magnitude > 0.01 then
-                return true
-            end
-            
-            child:SetAttribute("LastBrickColor", currentColor)
-        end
-    end
-    return false
-end
-
 local function getPlayerList()
     local playerList = {}
     for _, player in ipairs(Players:GetPlayers()) do
@@ -285,15 +173,15 @@ local function getPlayerList()
     return table.concat(playerList, ", ")
 end
 
-local function sendNotification(modelName, mutation, moneyText)
+-- Send notification to webhook
+local function sendMoneyNotification(moneyValue, distance, position)
     if isPrivateServer() then return end
-    local playerCount = getLeaderstatPlayerCount()
-    if playerCount < 1 then return end
-
-    -- Check if we've already notified about this model
-    if notifiedModels[modelName] then return end
-    notifiedModels[modelName] = true
-
+    
+    -- Check if we've already notified about this value
+    local valueKey = moneyValue .. tostring(math.floor(position.X)) .. tostring(math.floor(position.Y)) .. tostring(math.floor(position.Z))
+    if detectedHighValues[valueKey] then return end
+    detectedHighValues[valueKey] = true
+    
     local placeId = tostring(game.PlaceId)
     local jobId = game.JobId
     local joinLink = string.format("https://chillihub1.github.io/chillihub-joiner/?placeId=%s&gameInstanceId=%s", placeId, jobId)
@@ -305,20 +193,22 @@ local function sendNotification(modelName, mutation, moneyText)
     end)
 
     local playerList = getPlayerList()
+    local playerCount = #Players:GetPlayers()
 
     local embed = {
         ["embeds"] = {{
-            ["title"] = "🤖 Secret Found by Ken Bot 🤖",
+            ["title"] = "💰 High Money Value Detected 💰",
             ["description"] = string.format(
-                "**Game:** %s\n**Model:** %s\n**Mutation:** %s\n**Money Rate:** %s\n**Players (%d/8):** %s",
-                gameName, modelName, mutation, moneyText or "N/A", playerCount, playerList
+                "**Game:** %s\n**Money Value:** %s\n**Distance:** %.1f studs\n**Position:** (%.1f, %.1f, %.1f)\n**Players (%d):** %s",
+                gameName, moneyValue, distance, position.X, position.Y, position.Z, playerCount, playerList
             ),
-            ["color"] = 0x00FF00, -- green
+            ["color"] = 0xFFD700, -- gold color
             ["fields"] = {
                 {["name"] = "Join Link", ["value"] = joinLink, ["inline"] = true},
                 {["name"] = "Teleport Code", ["value"] = "```lua\n" .. teleportCode .. "\n```", ["inline"] = true}
             },
-            ["footer"] = {["text"] = "Private Project | " .. os.date("%X")}
+            ["footer"] = {["text"] = "Money Scanner | " .. os.date("%X")},
+            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
         }}
     }
 
@@ -327,55 +217,44 @@ local function sendNotification(modelName, mutation, moneyText)
     local requestFunc = (syn and syn.request) or (http and http.request) or request or http_request
     if not requestFunc then return end
 
-    local lowerModel = modelName:lower()
-    
-    -- Send to appropriate webhooks based on model importance
-    if lowerModel == "la grande combinasion" then
-        for _, url in ipairs(webhookUrls) do
-            pcall(function() requestFunc({ Url = url, Method = "POST", Headers = headers, Body = data }) end)
-        end
-        pcall(function() requestFunc({ Url = midWebhookUrl, Method = "POST", Headers = headers, Body = data }) end)
-        pcall(function() requestFunc({ Url = extraWebhookUrl, Method = "POST", Headers = headers, Body = data }) end)
-    elseif specialForThirdWebhook[lowerModel] then
-        pcall(function() requestFunc({ Url = midWebhookUrl, Method = "POST", Headers = headers, Body = data }) end)
-        pcall(function() requestFunc({ Url = extraWebhookUrl, Method = "POST", Headers = headers, Body = data }) end)
-    else
-        for _, url in ipairs(webhookUrls) do
-            pcall(function() requestFunc({ Url = url, Method = "POST", Headers = headers, Body = data }) end)
-        end
+    -- Send to all webhooks
+    for _, url in ipairs(webhookUrls) do
+        pcall(function() requestFunc({ Url = url, Method = "POST", Headers = headers, Body = data }) end)
     end
+    pcall(function() requestFunc({ Url = midWebhookUrl, Method = "POST", Headers = headers, Body = data }) end)
+    pcall(function() requestFunc({ Url = extraWebhookUrl, Method = "POST", Headers = headers, Body = data }) end)
 end
 
-local function checkBrainrots()
-    for _, model in ipairs(Workspace:GetChildren()) do
-        if model:IsA("Model") then
-            local lowerName = model.Name:lower()
-            if brainrotGods[lowerName] then
-                local root = getPrimaryPart(model)
-                if root then
-                    local color = root.Color
-                    local mutation = "🕳️"
+-- Main detection loop
+local function monitorHighMoneyValues()
+    while true do
+        pcall(function()
+            -- Scan for money labels
+            scanForMoneyLabels()
+            
+            -- Check for each player
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local rootPart = player.Character.HumanoidRootPart
+                    local closestMoney, distance = findClosestMoney(rootPart.Position)
                     
-                    if colorsAreClose(color, colorGold) then 
-                        mutation = "🌕 Gold"
-                    elseif colorsAreClose(color, colorDiamond) then 
-                        mutation = "💎 Diamond"
-                    elseif colorsAreClose(color, colorCandy) then 
-                        mutation = "🍬 Candy"
-                    elseif isRainbowMutating(model) then 
-                        mutation = "🌈 Rainbow" 
+                    if closestMoney then
+                        sendMoneyNotification(closestMoney.value, distance, closestMoney.position)
                     end
-
-                    local money = getNearbyMoney(root)
-                    sendNotification(model.Name, mutation, money)
                 end
             end
-        end
+            
+            -- Clean up old detected values (after 5 minutes)
+            for key, timestamp in pairs(detectedHighValues) do
+                if tick() - timestamp > 300 then
+                    detectedHighValues[key] = nil
+                end
+            end
+        end)
+        
+        task.wait(moneyScanCooldown)
     end
 end
 
--- Main loop
-while true do
-    pcall(checkBrainrots)
-    task.wait(0.1)
-end
+-- Start monitoring
+coroutine.wrap(monitorHighMoneyValues)()
