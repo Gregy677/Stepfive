@@ -3,6 +3,7 @@ local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TeleportService = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
 
 -- Configuration
 local allowedPlaceId = 109983668079237
@@ -19,6 +20,7 @@ local midWebhookUrl = "https://l.webhook.party/hook/JKtX273MSUop97RHSdUK7KQkM4fW
 -- Money detection configuration
 local moneyScanCooldown = 2 -- seconds between scans
 local detectionRange = 50 -- studs
+local modelDetectionRange = 7 -- studs for nearby models
 local lastMoneyScan = 0
 local moneyLabels = {}
 local detectedHighValues = {} -- Track already detected high values
@@ -28,6 +30,64 @@ local ignoreWords = {
     "cash", "offline", "font", "color", "rgb", "hex", "profit", "income", 
     "total", "balance", "wallet", "bank", "collected", "earned", "gained"
 }
+
+-- Check if a GUI object is visible on screen
+local function isGuiVisible(guiObject)
+    if not guiObject:IsA("GuiObject") then return false end
+    
+    -- Check if visible and not transparent
+    if guiObject.Visible == false or guiObject.BackgroundTransparency >= 1 or guiObject.TextTransparency >= 1 then
+        return false
+    end
+    
+    -- Check if has a valid parent screen GUI
+    local screenGui = guiObject:FindFirstAncestorOfClass("ScreenGui")
+    if not screenGui or not screenGui.Enabled then
+        return false
+    end
+    
+    -- Check if position is on screen (for ScreenGuis)
+    if screenGui then
+        local absPos = guiObject.AbsolutePosition
+        local absSize = guiObject.AbsoluteSize
+        
+        -- Simple check if the GUI element is within screen bounds
+        if absPos.X < 0 or absPos.Y < 0 or absPos.X > screenGui.AbsoluteSize.X or absPos.Y > screenGui.AbsoluteSize.Y then
+            return false
+        end
+    end
+    
+    return true
+end
+
+-- Check if a 3D text label is visible
+local function isTextLabelVisible(textLabel)
+    if not textLabel:IsA("TextLabel") and not textLabel:IsA("TextButton") and not textLabel:IsA("TextBox") then
+        return false
+    end
+    
+    -- Check basic visibility properties
+    if textLabel.Visible == false then
+        return false
+    end
+    
+    -- Check if it's a SurfaceGui and its parent part is visible
+    local surfaceGui = textLabel:FindFirstAncestorOfClass("SurfaceGui")
+    if surfaceGui then
+        local part = surfaceGui.Adornee
+        if not part or not part:IsA("BasePart") or part.Transparency >= 1 then
+            return false
+        end
+    end
+    
+    -- Check if it's a BillboardGui and visible
+    local billboardGui = textLabel:FindFirstAncestorOfClass("BillboardGui")
+    if billboardGui and (billboardGui.Enabled == false or billboardGui.Adornee == nil) then
+        return false
+    end
+    
+    return true
+end
 
 -- Money pattern detection
 local function matchesMoneyPattern(text)
@@ -101,6 +161,33 @@ local function extractMoneyValue(text)
     return num, formattedValue
 end
 
+-- Find all models near a position within a range
+local function findNearbyModels(position, maxDistance)
+    local nearbyModels = {}
+    
+    for _, model in ipairs(Workspace:GetChildren()) do
+        if model:IsA("Model") then
+            local primaryPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+            if primaryPart then
+                local distance = (primaryPart.Position - position).Magnitude
+                if distance <= maxDistance then
+                    table.insert(nearbyModels, {
+                        name = model.Name,
+                        distance = distance
+                    })
+                end
+            end
+        end
+    end
+    
+    -- Sort by distance
+    table.sort(nearbyModels, function(a, b)
+        return a.distance < b.distance
+    end)
+    
+    return nearbyModels
+end
+
 -- Find the model that contains the money text
 local function findModelForMoneyText(moneyObject)
     if not moneyObject then return "Unknown" end
@@ -158,20 +245,30 @@ local function scanForMoneyLabels()
     -- Scan all descendants for money labels
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox")) and matchesMoneyPattern(obj.Text) then
-            local base = obj:FindFirstAncestorWhichIsA("BasePart") or obj
-            local numericValue, formattedValue = extractMoneyValue(obj.Text)
+            -- Check if the text is visible
+            local isVisible = false
+            if obj:IsA("GuiObject") then
+                isVisible = isGuiVisible(obj)
+            else
+                isVisible = isTextLabelVisible(obj)
+            end
             
-            -- Only track values over 1M/s
-            if numericValue >= 1000000 then
-                moneyLabels[base] = {
-                    label = obj,
-                    lastScan = tick(),
-                    value = formattedValue,
-                    numericValue = numericValue,
-                    position = base:IsA("BasePart") and base.Position or base.AbsolutePosition,
-                    rawText = obj.Text,
-                    modelName = findModelForMoneyText(obj)
-                }
+            if isVisible then
+                local base = obj:FindFirstAncestorWhichIsA("BasePart") or obj
+                local numericValue, formattedValue = extractMoneyValue(obj.Text)
+                
+                -- Only track values over 1M/s
+                if numericValue >= 1000000 then
+                    moneyLabels[base] = {
+                        label = obj,
+                        lastScan = tick(),
+                        value = formattedValue,
+                        numericValue = numericValue,
+                        position = base:IsA("BasePart") and base.Position or base.AbsolutePosition,
+                        rawText = obj.Text,
+                        modelName = findModelForMoneyText(obj)
+                    }
+                end
             end
         end
     end
@@ -231,8 +328,24 @@ local function getPlayerList()
     return table.concat(playerList, ", ")
 end
 
+-- Format nearby models list
+local function formatNearbyModels(models)
+    if #models == 0 then
+        return "None"
+    end
+    
+    local result = {}
+    for i, model in ipairs(models) do
+        if i <= 10 then -- Limit to 10 closest models
+            table.insert(result, string.format("%s (%.1f studs)", model.name, model.distance))
+        end
+    end
+    
+    return table.concat(result, "\n- ")
+end
+
 -- Send notification to webhook
-local function sendMoneyNotification(moneyValue, distance, position, modelName, rawText)
+local function sendMoneyNotification(moneyValue, distance, position, modelName, rawText, nearbyModels)
     if isPrivateServer() then return end
     
     -- Check if we've already notified about this value
@@ -257,13 +370,26 @@ local function sendMoneyNotification(moneyValue, distance, position, modelName, 
         ["embeds"] = {{
             ["title"] = "💰 High Money Value Detected 💰",
             ["description"] = string.format(
-                "**Game:** %s\n**Money Value:** %s\n**Model Name:** %s\n**Distance:** %.1f studs\n**Position:** (%.1f, %.1f, %.1f)\n**Players (%d):** %s\n**Raw Text:** %s",
+                "**Game:** %s\n**Money Value:** %s\n**Source Model:** %s\n**Distance:** %.1f studs\n**Position:** (%.1f, %.1f, %.1f)\n**Players (%d):** %s\n**Raw Text:** %s",
                 gameName, moneyValue, modelName or "Unknown", distance, position.X, position.Y, position.Z, playerCount, playerList, rawText or "N/A"
             ),
             ["color"] = 0xFFD700, -- gold color
             ["fields"] = {
-                {["name"] = "Join Link", ["value"] = joinLink, ["inline"] = true},
-                {["name"] = "Teleport Code", ["value"] = "```lua\n" .. teleportCode .. "\n```", ["inline"] = true}
+                {
+                    ["name"] = "Nearby Models (0-7 studs)",
+                    ["value"] = "```\n- " .. formatNearbyModels(nearbyModels) .. "\n```",
+                    ["inline"] = false
+                },
+                {
+                    ["name"] = "Join Link", 
+                    ["value"] = joinLink, 
+                    ["inline"] = true
+                },
+                {
+                    ["name"] = "Teleport Code", 
+                    ["value"] = "```lua\n" .. teleportCode .. "\n```", 
+                    ["inline"] = true
+                }
             },
             ["footer"] = {["text"] = "Money Scanner | " .. os.date("%X")},
             ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
@@ -297,12 +423,16 @@ local function monitorHighMoneyValues()
                     local closestMoney, distance = findClosestMoney(rootPart.Position)
                     
                     if closestMoney then
+                        -- Find all models within 7 studs of the money text
+                        local nearbyModels = findNearbyModels(closestMoney.position, modelDetectionRange)
+                        
                         sendMoneyNotification(
                             closestMoney.value, 
                             distance, 
                             closestMoney.position, 
                             closestMoney.modelName, 
-                            closestMoney.rawText
+                            closestMoney.rawText,
+                            nearbyModels
                         )
                     end
                 end
