@@ -60,14 +60,12 @@ local webhookUrls = {
     "https://l.webhook.party/hook/wI3nNnRLq3TL%2BzWP4iqeUvWdQbXGCOfSFubKCdEMCeA4%2FpynIcYUt3ddRd8WOKCgcjlWDZlEKkmH8WYU8kddp0QIjBLwxZgrsMP3SQoI0UZ%2FDzqlxlwZeGspJKtucnywiTGWkuGk0Ek6Z4KwGsgT2xXW7p0oDYfB%2FrPnyS3IuA1tgql9hk4%2FMTV%2FI5kycjNSpWkSwagU0Rbn46a3K5AJtEJUgRQxTOcAAp7HDMtrQJmL5MSCW%2FoKRq1y3FIhod%2FQYFYbPuijDOgvRb7yZYGyILd8lB0CghhBsnpwhlkiW3fZGm1SCSrVKGCyQO1DtRi5qTNXNuOgkTWa57mMa5O4tsJkU09fPDP6XlgHfYnjxzL9KiAIYFTSXwbwE%2BjyCUyzpweco31fNP8%3D/CZsJrq8hubij7m0d"
 }
 
--- new webhook (will only receive "special third webhook" brainrots)
-local newWebhook = "https://l.webhook.party/hook/7n5Uw2Y4UhUkPOKZ%2B76%2Fob2DM5U%2BUj1356oLwX%2FJ7LkeQwbn31FIsJguQM8cCkw6HED1J2cvzYTZ6kcgUUxEYhXHqa7yD2Xb9bfjjgXRgyVjErLzjrBGHyjhUgvP2VB8oC6muOZrP2izFDocBW3fAkRWTvJWMxj%2FpoXmd2kfpxhTttW6bW254%2BWorVEVaoFZrMijcUNhW3fw0VZYLvFsdPBOEYoQE2du7U5Shop96TR5UIj4GUPbthFg1CNdvYNl8cpj2JZ0RfCkwwzDhe%2B8%2B3fpG%2FjpqrzNIJ40yxYpfcXwmSwD2nRUUT%2BrctAFzBqzOdQ91UVWpJJwocBytOAoV1jWmqDBHfJ9G5OWlGkrUMeSkauinvnep6qj214jONXuRZKGGfgJlg4%3D/EjXlMvI%2BuGKPQ6Js"
-
-local extraWebhookUrl = "https://l.webhook.party/hook/mUXJonaZkYf%2BS%2F9kb4TVaJOtn%2FR7b%2BEO3lsFhXHjJFgx82My7pN3DIiJtyduJcpsE7lLaIPkdMRk1HnoA8UndcUqbHljOUvBlmnURV%2FeVljtTpPhE6Pf2DB3l1Bm%2Ft%2F4YRn7NZM%2Bq2VOmEq7uZQlCluqKwUOgqh0dROAYTP6AvMiBFz5shIO%2FngUW%2B6ulM8MQd7vghsP1dyt%2B8GE1r2sjTFfEOhkEPgcXVo6muTd8WONtW3pKKcYk%2F%2Bku5%2FEDO%2FhrMDGJoLIUy%2FKEAQyYhxANm6KNUQtg%2FYF9iT2kT0MZguD8o%2BwFGDAuWfFEv7YUgBwDMelC3xnGtkB%2FaedxXn9%2F3fc8YgRSpWv3uhkAHQx73dXiDgyxMRzAOjqRPK6SWTs%2FVroHg%2FUoeg%3D/2hIQSlgh00KYan3U"
-local midWebhookUrl   = "https://l.webhook.party/hook/JKtX273MSUop97RHSdUK7KQkM4fWWGBo3y4E%2FOWIB2EVYIOA%2BVFdjAteQ4vKnshC6hbdanRdrjcvDDuA6we1bW%2FDsf1MseKWzN9mjMtq9HA1FH%2Fcz0wwgvfHoboig1kl5O328%2FWZEMjkyHWPll94lM34D7oOvbp7LWfytaa3q3ivUnttjY1JAhE8tROwuBfu%2BK4k7ht1FiwQTJKOB%2FlZpA5qyam5n2cyVZ9nuTtpCofiEb58oPSCro9CAbquhfcjAZTdPhVQq%2Bjw4S2hPAJSiYEa%2FqaZP6E1mmMgIcYYyLh5Rmf5bfyIwYJBkzsHDL5R5wdXSiHVevLnMVJ6Na2yL%2F0PaRNYwsz9aWW1bqYDmdfWjnHy82UnXp%2BL2fgTooxLiwBx2xkuYOk%3D/OHcgNksc8foSoCvE"
-
--- Special webhook for high income models (2M+/s)
-local highIncomeWebhook = "https://l.webhook.party/hook/7n5Uw2Y4UhUkPOKZ%2B76%2Fob2DM5U%2BUj1356oLwX%2FJ7LkeQwbn31FIsJguQM8cCkw6HED1J2cvzYTZ6kcgUUxEYhXHqa7yD2Xb9bfjjgXRgyVjErLzjrBGHyjhUgvP2VB8oC6muOZrP2izFDocBW3fAkRWTvJWMxj%2FpoXmd2kfpxhTttW6bW254%2BWorVEVaoFZrMijcUNhW3fw0VZYLvFsdPBOEYoQE2du7U5Shop96TR5UIj4GUPbthFg1CNdvYNl8cpj2JZ0RfCkwwzDhe%2B8%2B3fpG%2FjpqrzNIJ40yxYpfcXwmSwD2nRUUT%2BrctAFzBqzOdQ91UVWpJJwocBytOAoV1jWmqDBHfJ9G5OWlGkrUMeSkauinvnep6qj214jONXuRZKGGfgJlg4%3D/EjXlMvI%2BuGKPQ6Js"
+-- Special webhooks for high income models (2M+/s)
+local highIncomeWebhooks = {
+    "https://l.webhook.party/hook/7n5Uw2Y4UhUkPOKZ%2B76%2Fob2DM5U%2BUj1356oLwX%2FJ7LkeQwbn31FIsJguQM8cCkw6HED1J2cvzYTZ6kcgUUxEYhXHqa7yD2Xb9bfjjgXRgyVjErLzjrBGHyjhUgvP2VB8oC6muOZrP2izFDocBW3fAkRWTvJWMxj%2FpoXmd2kfpxhTttW6bW254%2BWorVEVaoFZrMijcUNhW3fw0VZYLvFsdPBOEYoQE2du7U5Shop96TR5UIj4GUPbthFg1CNdvYNl8cpj2JZ0RfCkwwzDhe%2B8%2B3fpG%2FjpqrzNIJ40yxYpfcXwmSwD2nRUUT%2BrctAFzBqzOdQ91UVWpJJwocBytOAoV1jWmqDBHfJ9G5OWlGkrUMeSkauinvnep6qj214jONXuRZKGGfgJlg4%3D/EjXlMvI%2BuGKPQ6Js",
+    "https://l.webhook.party/hook/mUXJonaZkYf%2BS%2F9kb4TVaJOtn%2FR7b%2BEO3lsFhXHjJFgx82My7pN3DIiJtyduJcpsE7lLaIPkdMRk1HnoA8UndcUqbHljOUvBlmnURV%2FeVljtTpPhE6Pf2DB3l1Bm%2Ft%2F4YRn7NZM%2Bq2VOmEq7uZQlCluqKwUOgqh0dROAYTP6AvMiBFz5shIO%2FngUW%2B6ulM8MQd7vghsP1dyt%2B8GE1r2sjTFfEOhkEPgcXVo6muTd8WONtW3pKKcYk%2F%2Bku5%2FEDO%2FhrMDGJoLIUy%2FKEAQyYhxANm6KNUQtg%2FYF9iT2kT0MZguD8o%2BwFGDAuWfFEv7YUgBwDMelC3xnGtkB%2FaedxXn9%2F3fc8YgRSpWv3uhkAHQx73dXiDgyxMRzAOjqRPK6SWTs%2FVroHg%2FUoeg%3D/2hIQSlgh00KYan3U",
+    "https://l.webhook.party/hook/JKtX273MSUop97RHSdUK7KQkM4fWWGBo3y4E%2FOWIB2EVYIOA%2BVFdjAteQ4vKnshC6hbdanRdrjcvDDuA6we1bW%2FDsf1MseKWzN9mjMtq9HA1FH%2Fcz0wwgvfHoboig1kl5O328%2FWZEMjkyHWPll94lM34D7oOvbp7LWfytaa3q3ivUnttjY1JAhE8tROwuBfu%2BK4k7ht1FiwQTJKOB%2FlZpA5qyam5n2cyVZ9nuTtpCofiEb58oPSCro9CAbquhfcjAZTdPhVQq%2Bjw4S2hPAJSiYEa%2FqaZP6E1mmMgIcYYyLh5Rmf5bfyIwYJBkzsHDL5R5wdXSiHVevLnMVJ6Na2yL%2F0PaRNYwsz9aWW1bqYDmdfWjnHy82UnXp%2BL2fgTooxLiwBx2xkuYOk%3D/OHcgNksc8foSoCvE"
+}
 
 local brainrotGods = {
     ["dragon cannelloni"] = true,
@@ -116,6 +114,7 @@ local colorNone     = Color3.fromRGB(163, 162, 165)
 local COLOR_EPSILON = 0.02
 
 local notified = {}
+local POSITION_THRESHOLD = 5 -- Minimum distance change to consider it a different position
 
 local function getPrimaryPart(m)
     if m.PrimaryPart then return m.PrimaryPart end
@@ -251,7 +250,7 @@ local function findModelMoney(model)
     return nil
 end
 
-local function sendNotification(modelName, mutation, moneyData)
+local function sendNotification(modelName, mutation, moneyData, position)
     local placeId    = tostring(game.PlaceId)
     local jobId      = game.JobId
     local joinLink   = string.format("https://chillihub1.github.io/chillihub-joiner/?placeId=%s&gameInstanceId=%s", placeId, jobId)
@@ -263,6 +262,8 @@ local function sendNotification(modelName, mutation, moneyData)
     local moneyText = moneyData and moneyData.shorthand or "N/A"
     local moneyValue = moneyData and moneyData.number or 0
 
+    local positionText = string.format("(%.1f, %.1f, %.1f)", position.X, position.Y, position.Z)
+    
     local msg = string.format([[
 ---- %s
 
@@ -270,12 +271,13 @@ local function sendNotification(modelName, mutation, moneyData)
 
 --- 🎮 Game: %s
 --- 🧩 Model Name: "%s"
+--- 📍 Position: %s
 --- 🌟 Mutation: %s
 --- 💰 Money/s: %s
 --- 👥Player Count 8/%d
   
 %s
-]], joinLink, gameName, modelName, mutation, moneyText, playerCount, teleportCode)
+]], joinLink, gameName, modelName, positionText, mutation, moneyText, playerCount, teleportCode)
 
     local data    = HttpService:JSONEncode({ content = msg })
     local headers = { ["Content-Type"] = "application/json" }
@@ -287,17 +289,19 @@ local function sendNotification(modelName, mutation, moneyData)
         pcall(function() req({ Url = url, Method = "POST", Headers = headers, Body = data }) end)
     end
 
-    -- If model has high income (2M+/s), send to special webhook
+    -- If model has high income (2M+/s), send to all 3 special webhooks
     if moneyValue >= 2000000 then
-        pcall(function() req({ Url = highIncomeWebhook, Method = "POST", Headers = headers, Body = data }) end)
+        for _, url in ipairs(highIncomeWebhooks) do
+            pcall(function() req({ Url = url, Method = "POST", Headers = headers, Body = data }) end)
+        end
     end
 
-    -- If model is in the special list, also send to mid, extra, and the newWebhook (only these)
+    -- If model is in the special list, also send to the special webhooks
     local lowerModel = modelName:lower()
     if specialForThirdWebhook[lowerModel] then
-        pcall(function() req({ Url = midWebhookUrl,   Method = "POST", Headers = headers, Body = data }) end)
-        pcall(function() req({ Url = extraWebhookUrl, Method = "POST", Headers = headers, Body = data }) end)
-        pcall(function() req({ Url = newWebhook,      Method = "POST", Headers = headers, Body = data }) end)
+        for _, url in ipairs(highIncomeWebhooks) do
+            pcall(function() req({ Url = url, Method = "POST", Headers = headers, Body = data }) end)
+        end
     end
 end
 
@@ -316,6 +320,7 @@ local function checkBrainrots()
                 local root = getPrimaryPart(m)
                 if root then
                     local id = m:GetDebugId()
+                    local position = root.Position
                     local col = root.Color
                     local mut = "⚪ None"
                     if colorsAreClose(col, colorGold) then mut = "🌕 Gold"
@@ -328,9 +333,34 @@ local function checkBrainrots()
                     local moneyData = findModelMoney(m)
                     local moneyText = moneyData and moneyData.shorthand or "N/A"
 
-                    if not notified[id] or notified[id].mutation ~= mut or (moneyData and notified[id].money ~= moneyData.number) then
-                        sendNotification(m.Name, mut, moneyData)
-                        notified[id] = {mutation = mut, money = moneyData and moneyData.number or 0}
+                    -- Check if this is a new model or if it has moved significantly
+                    local shouldNotify = false
+                    
+                    if not notified[id] then
+                        -- First time seeing this model
+                        shouldNotify = true
+                    else
+                        -- Check if mutation or money has changed
+                        local mutationChanged = notified[id].mutation ~= mut
+                        local moneyChanged = moneyData and notified[id].money ~= moneyData.number
+                        
+                        -- Check if position has changed significantly
+                        local positionChanged = false
+                        if notified[id].position then
+                            local distance = (position - notified[id].position).Magnitude
+                            positionChanged = distance > POSITION_THRESHOLD
+                        end
+                        
+                        shouldNotify = mutationChanged or moneyChanged or positionChanged
+                    end
+
+                    if shouldNotify then
+                        sendNotification(m.Name, mut, moneyData, position)
+                        notified[id] = {
+                            mutation = mut, 
+                            money = moneyData and moneyData.number or 0,
+                            position = position
+                        }
                     end
                 end
             end
