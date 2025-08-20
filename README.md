@@ -1,60 +1,25 @@
-local HttpService        = game:GetService("HttpService")
-local Workspace          = game:GetService("Workspace")
-local Players            = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
-local TeleportService    = game:GetService("TeleportService")
-local RunService         = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
 
-local allowedPlaceId = 109983668079237
-if game.PlaceId ~= allowedPlaceId then return end
+-- Configuration
+local ALLOWED_PLACE_ID = 109983668079237
+local MIN_PLAYERS = 6
+local POSITION_THRESHOLD = 5
+local COLOR_EPSILON = 0.02
+local SCAN_INTERVAL = 0.1
 
-local function isNotPublicServer()
-    if RunService:IsStudio() then
-        warn("[Brainrot Detector] ❌ Studio detected. Stopping script.")
-        return true
-    end
+-- Color definitions
+local COLOR_GOLD = Color3.fromRGB(237, 178, 0)
+local COLOR_DIAMOND = Color3.fromRGB(37, 196, 254)
+local COLOR_CANDY = Color3.fromRGB(255, 182, 255)
+local COLOR_LAVA = Color3.fromRGB(255, 94, 0)
+local COLOR_NONE = Color3.fromRGB(163, 162, 165)
 
-    if not game.JobId or game.JobId == "" then
-        warn("[Brainrot Detector] ❌ No JobId (not a public server). Stopping script.")
-        return true
-    end
-
-    if (game.PrivateServerId and game.PrivateServerId ~= "")
-    or (game.PrivateServerOwnerId and game.PrivateServerOwnerId ~= 0) then
-        warn("[Brainrot Detector] ❌ PrivateServer flag found. Stopping script.")
-        return true
-    end
-
-    local ok, info = pcall(function()
-        return TeleportService:GetPlayerPlaceInstanceAsync(Players.LocalPlayer.UserId, game.PlaceId)
-    end)
-    if ok and info then
-        if (info.PrivateServerId and info.PrivateServerId ~= "")
-        or (info.ReservedServerAccessCode and info.ReservedServerAccessCode ~= "") then
-            warn("[Brainrot Detector] ❌ Reserved/Private server detected via TeleportService. Stopping script.")
-            return true
-        end
-    end
-
-    if type(game.JobId) == "string" and #game.JobId < 16 then
-        warn("[Brainrot Detector] ❌ Short JobId (suspicious). Stopping script.")
-        return true
-    end
-
-    if #Players:GetPlayers() < 6 then
-        warn("[Brainrot Detector] ❌ Low player count (" .. tostring(#Players:GetPlayers()) .. ") - likely private. Stopping script.")
-        return true
-    end
-
-    return false
-end
-
-if isNotPublicServer() then
-    return
-else
-    print("[Brainrot Detector] ✅ Public server detected. Script running...")
-end
-
+-- Webhook configuration
 local webhookUrls = {
     "https://l.webhook.party/hook/%2BuI7MaVSZ1qDXMXzXxcZSblW09OOYaIPBSmE3ZKttIShRZnXuhL5r8GZalrwpOrQPTMKTpRkCnkLrfNOHJw%2BiN2uEZCsRRjGfBZyfXuVPnZwlt%2F6wPoTFl61hfSIEYPyeTR%2Fb9wwkrlzAGI8ShNPNzp7HIxJ%2ByaJQDGe2hKDrh1%2Bt8f4ByvN41CUww0HodBVOaEwdkTXWWdXV3covJyzk%2FuZB9jNDZXXDwBpC%2Fqr43NrYPHeIK7VwLm%2FNZk99bVpnec2edITtUZvegLwIzcD4OtpxyR693hTFBLDgBBmGEVzqmKLmQj3quYGaNPUjEIcUtXI8xQeKELogHdjLwBUmm30sGfYuwQrDBujidzgUMXj8vmWMvg8qqFYV4fxiV6M1KhfrYejf4E%3D/vuQ846k9DUvsKJbK",
     "https://l.webhook.party/hook/wI3nNnRLq3TL%2BzWP4iqeUvWdQbXGCOfSFubKCdEMCeA4%2FpynIcYUt3ddRd8WOKCgcjlWDZlEKkmH8WYU8kddp0QIjBLwxZgrsMP3SQoI0UZ%2FDzqlxlwZeGspJKtucnywiTGWkuGk0Ek6Z4KwGsgT2xXW7p0oDYfB%2FrPnyS3IuA1tgql9hk4%2FMTV%2FI5kycjNSpWkSwagU0Rbn46a3K5AJtEJUgRQxTOcAAp7HDMtrQJmL5MSCW%2FoKRq1y3FIhod%2FQYFYbPuijDOgvRb7yZYGyILd8lB0CghhBsnpwhlkiW3fZGm1SCSrVKGCyQO1DtRi5qTNXNuOgkTWa57mMa5O4tsJkU09fPDP6XlgHfYnjxzL9KiAIYFTSXwbwE%2BjyCUyzpweco31fNP8%3D/CZsJrq8hubij7m0d"
@@ -106,19 +71,64 @@ local specialForThirdWebhook = {
     ["graipuss medussi"] = true,
 }
 
-local colorGold     = Color3.fromRGB(237, 178, 0)
-local colorDiamond  = Color3.fromRGB(37, 196, 254)
-local colorCandy    = Color3.fromRGB(255, 182, 255)
-local colorLava     = Color3.fromRGB(255, 94, 0)
-local colorNone     = Color3.fromRGB(163, 162, 165)
-local COLOR_EPSILON = 0.02
-
+-- Track all brainrots found in the current game
+local allBrainrotsInGame = {}
 local notified = {}
-local POSITION_THRESHOLD = 5 -- Minimum distance change to consider it a different position
+local lastGlobalNotification = 0
+local GLOBAL_NOTIFICATION_COOLDOWN = 60 -- seconds
 
+-- Server validation function
+local function isNotPublicServer()
+    if RunService:IsStudio() then
+        warn("[Brainrot Detector] ❌ Studio detected. Stopping script.")
+        return true
+    end
+
+    if not game.JobId or game.JobId == "" then
+        warn("[Brainrot Detector] ❌ No JobId (not a public server). Stopping script.")
+        return true
+    end
+
+    if (game.PrivateServerId and game.PrivateServerId ~= "")
+    or (game.PrivateServerOwnerId and game.PrivateServerOwnerId ~= 0) then
+        warn("[Brainrot Detector] ❌ PrivateServer flag found. Stopping script.")
+        return true
+    end
+
+    local ok, info = pcall(function()
+        return TeleportService:GetPlayerPlaceInstanceAsync(Players.LocalPlayer.UserId, game.PlaceId)
+    end)
+    if ok and info then
+        if (info.PrivateServerId and info.PrivateServerId ~= "")
+        or (info.ReservedServerAccessCode and info.ReservedServerAccessCode ~= "") then
+            warn("[Brainrot Detector] ❌ Reserved/Private server detected via TeleportService. Stopping script.")
+            return true
+        end
+    end
+
+    if type(game.JobId) == "string" and #game.JobId < 16 then
+        warn("[Brainrot Detector] ❌ Short JobId (suspicious). Stopping script.")
+        return true
+    end
+
+    if #Players:GetPlayers() < MIN_PLAYERS then
+        warn("[Brainrot Detector] ❌ Low player count (" .. tostring(#Players:GetPlayers()) .. ") - likely private. Stopping script.")
+        return true
+    end
+
+    return false
+end
+
+if isNotPublicServer() then
+    return
+else
+    print("[Brainrot Detector] ✅ Public server detected. Script running...")
+end
+
+-- Utility functions
 local function getPrimaryPart(m)
     if m.PrimaryPart then return m.PrimaryPart end
-    for _, p in ipairs(m:GetDescendants()) do
+    for _, p in ipairs(m:GetChildren()) do
         if p:IsA("BasePart") then return p end
     end
 end
@@ -142,10 +152,6 @@ local function isRainbowMutating(m)
 end
 
 local suffixMap = {k=1e3, K=1e3, m=1e6, M=1e6, b=1e9, B=1e9, t=1e12, T=1e12}
-
-local function trim(s)
-    return (s or ""):gsub("^%s*(.-)%s*$", "%1")
-end
 
 local function parseMoneyText(raw)
     if not raw or type(raw) ~= "string" then return nil end
@@ -250,38 +256,130 @@ local function findModelMoney(model)
     return nil
 end
 
-local function sendNotification(modelName, mutation, moneyData, position)
-    local placeId    = tostring(game.PlaceId)
-    local jobId      = game.JobId
-    local joinLink   = string.format("https://chillihub1.github.io/chillihub-joiner/?placeId=%s&gameInstanceId=%s", placeId, jobId)
+local function colorsAreClose(a, b)
+    return math.abs(a.R - b.R) < COLOR_EPSILON and math.abs(a.G - b.G) < COLOR_EPSILON and math.abs(a.B - b.B) < COLOR_EPSILON
+end
+
+local function getMutationColor(m, root)
+    if not root then return "⚪ None" end
+    
+    local col = root.Color
+    if colorsAreClose(col, COLOR_GOLD) then return "🌕 Gold"
+    elseif colorsAreClose(col, COLOR_DIAMOND) then return "💎 Diamond"
+    elseif colorsAreClose(col, COLOR_CANDY) then return "🍬 Candy"
+    elseif colorsAreClose(col, COLOR_LAVA) then return "🌋 Lava"
+    elseif colorsAreClose(col, COLOR_NONE) then return "⚪ None"
+    elseif isRainbowMutating(m) then return "🌈 Rainbow" 
+    else return "⚪ None" end
+end
+
+-- Format player list for embed
+local function getPlayerList()
+    local players = Players:GetPlayers()
+    local playerNames = {}
+    
+    for _, player in ipairs(players) do
+        table.insert(playerNames, player.Name)
+    end
+    
+    return table.concat(playerNames, ", ")
+end
+
+-- Create Discord embed message
+local function createEmbedMessage(modelName, mutation, moneyData, position, allBrainrots)
+    local placeId = tostring(game.PlaceId)
+    local jobId = game.JobId
+    local joinLink = string.format("https://chillihub1.github.io/chillihub-joiner/?placeId=%s&gameInstanceId=%s", placeId, jobId)
     local teleportCode = string.format("game:GetService('TeleportService'):TeleportToPlaceInstance(%s, '%s', game.Players.LocalPlayer)", placeId, jobId)
     local gameName = "Unknown"
     pcall(function() gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name end)
 
     local playerCount = #Players:GetPlayers()
     local moneyText = moneyData and moneyData.shorthand or "N/A"
-    local moneyValue = moneyData and moneyData.number or 0
-
     local positionText = string.format("(%.1f, %.1f, %.1f)", position.X, position.Y, position.Z)
     
-    local msg = string.format([[
----- %s
+    -- Create brainrot list text
+    local brainrotList = ""
+    if allBrainrots and next(allBrainrots) then
+        for name, data in pairs(allBrainrots) do
+            brainrotList = brainrotList .. string.format("- %s: %s (%s)\n", name, data.money or "N/A", data.mutation or "None")
+        end
+    else
+        brainrotList = "No other brainrots found"
+    end
+    
+    -- Create the embed object
+    local embed = {
+        {
+            title = "Honey Hub Notifier",
+            description = string.format("@everyone\n\n**%s**", modelName),
+            color = 0xFFD700, -- Gold color
+            fields = {
+                {
+                    name = "Money per Sec",
+                    value = moneyText,
+                    inline = true
+                },
+                {
+                    name = "Mutation",
+                    value = mutation,
+                    inline = true
+                },
+                {
+                    name = "Player Count",
+                    value = string.format("%d/%d", playerCount, 8),
+                    inline = true
+                },
+                {
+                    name = "Position",
+                    value = positionText,
+                    inline = false
+                },
+                {
+                    name = "Players in Game",
+                    value = getPlayerList(),
+                    inline = false
+                },
+                {
+                    name = "All Brainrots in Game",
+                    value = brainrotList,
+                    inline = false
+                },
+                {
+                    name = "Join Link",
+                    value = string.format("[Join Here](%s)", joinLink),
+                    inline = false
+                },
+                {
+                    name = "Job ID",
+                    value = jobId,
+                    inline = false
+                },
+                {
+                    name = "Join Server",
+                    value = string.format("```lua\n%s\n```", teleportCode),
+                    inline = false
+                }
+            },
+            footer = {
+                text = string.format("Honey Hub Notifier • %s", os.date("%X"))
+            }
+        }
+    }
+    
+    return {
+        content = "@everyone",
+        embeds = embed,
+        username = "Honey Hub Notifier",
+        avatar_url = "https://i.imgur.com/6e5TqXx.png" -- Optional: add a custom avatar
+    }
+end
 
----- Secret Is Found 👋 ----
-
---- 🎮 Game: %s
---- 🧩 Model Name: "%s"
---- 📍 Position: %s
---- 🌟 Mutation: %s
---- 💰 Money/s: %s
---- 👥Player Count 8/%d
-  
-%s
-]], joinLink, gameName, modelName, positionText, mutation, moneyText, playerCount, teleportCode)
-
-    local data    = HttpService:JSONEncode({ content = msg })
+-- Send notification with embed format
+local function sendNotification(modelName, mutation, moneyData, position)
+    local data = HttpService:JSONEncode(createEmbedMessage(modelName, mutation, moneyData, position, allBrainrotsInGame))
     local headers = { ["Content-Type"] = "application/json" }
-    local req     = (syn and syn.request) or (http and http.request) or request or http_request
+    local req = (syn and syn.request) or (http and http.request) or request or http_request
     if not req then return end
 
     -- Always send to the general webhook list
@@ -289,6 +387,9 @@ local function sendNotification(modelName, mutation, moneyData, position)
         pcall(function() req({ Url = url, Method = "POST", Headers = headers, Body = data }) end)
     end
 
+    local moneyValue = moneyData and moneyData.number or 0
+    local lowerModel = modelName:lower()
+    
     -- If model has high income (2M+/s), send to all 3 special webhooks
     if moneyValue >= 2000000 then
         for _, url in ipairs(highIncomeWebhooks) do
@@ -297,7 +398,6 @@ local function sendNotification(modelName, mutation, moneyData, position)
     end
 
     -- If model is in the special list, also send to the special webhooks
-    local lowerModel = modelName:lower()
     if specialForThirdWebhook[lowerModel] then
         for _, url in ipairs(highIncomeWebhooks) do
             pcall(function() req({ Url = url, Method = "POST", Headers = headers, Body = data }) end)
@@ -305,14 +405,113 @@ local function sendNotification(modelName, mutation, moneyData, position)
     end
 end
 
-local function colorsAreClose(a, b)
-    return math.abs(a.R - b.R) < COLOR_EPSILON and math.abs(a.G - b.G) < COLOR_EPSILON and math.abs(a.B - b.B) < COLOR_EPSILON
+-- Send global notification with all brainrots
+local function sendGlobalNotification()
+    if os.time() - lastGlobalNotification < GLOBAL_NOTIFICATION_COOLDOWN then
+        return
+    end
+    
+    if not next(allBrainrotsInGame) then
+        return
+    end
+    
+    local placeId = tostring(game.PlaceId)
+    local jobId = game.JobId
+    local joinLink = string.format("https://chillihub1.github.io/chillihub-joiner/?placeId=%s&gameInstanceId=%s", placeId, jobId)
+    local teleportCode = string.format("game:GetService('TeleportService'):TeleportToPlaceInstance(%s, '%s', game.Players.LocalPlayer)", placeId, jobId)
+    local gameName = "Unknown"
+    pcall(function() gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name end)
+
+    local playerCount = #Players:GetPlayers()
+    
+    -- Create brainrot list text
+    local brainrotList = ""
+    for name, data in pairs(allBrainrotsInGame) do
+        brainrotList = brainrotList .. string.format("- %s: %s (%s)\n", name, data.money or "N/A", data.mutation or "None")
+    end
+    
+    -- Create the embed object
+    local embed = {
+        {
+            title = "Honey Hub - All Brainrots Summary",
+            description = "@everyone\n\n**All Brainrots in Current Game**",
+            color = 0x00FF00, -- Green color
+            fields = {
+                {
+                    name = "Player Count",
+                    value = string.format("%d/%d", playerCount, 8),
+                    inline = true
+                },
+                {
+                    name = "Total Brainrots Found",
+                    value = tostring(table.count(allBrainrotsInGame)),
+                    inline = true
+                },
+                {
+                    name = "Players in Game",
+                    value = getPlayerList(),
+                    inline = false
+                },
+                {
+                    name = "All Brainrots",
+                    value = brainrotList,
+                    inline = false
+                },
+                {
+                    name = "Join Link",
+                    value = string.format("[Join Here](%s)", joinLink),
+                    inline = false
+                },
+                {
+                    name = "Job ID",
+                    value = jobId,
+                    inline = false
+                },
+                {
+                    name = "Join Server",
+                    value = string.format("```lua\n%s\n```", teleportCode),
+                    inline = false
+                }
+            },
+            footer = {
+                text = string.format("Honey Hub Notifier • %s", os.date("%X"))
+            }
+        }
+    }
+    
+    local data = HttpService:JSONEncode({
+        content = "@everyone",
+        embeds = embed,
+        username = "Honey Hub Notifier",
+        avatar_url = "https://i.imgur.com/6e5TqXx.png"
+    })
+    
+    local headers = { ["Content-Type"] = "application/json" }
+    local req = (syn and syn.request) or (http and http.request) or request or http_request
+    if not req then return end
+
+    -- Send to all webhooks
+    for _, url in ipairs(webhookUrls) do
+        pcall(function() req({ Url = url, Method = "POST", Headers = headers, Body = data }) end)
+    end
+    
+    lastGlobalNotification = os.time()
 end
 
+-- Count elements in a table
+function table.count(t)
+    local count = 0
+    for _ in pairs(t) do count = count + 1 end
+    return count
+end
+
+-- Main function to check for brainrots
 local function checkBrainrots()
     local playerCount = #Players:GetPlayers()
     if playerCount < 1 or playerCount > 7 then return end
 
+    local foundNew = false
+    
     for _, m in ipairs(Workspace:GetChildren()) do
         if m:IsA("Model") then
             local lowerName = m.Name:lower()
@@ -321,17 +520,16 @@ local function checkBrainrots()
                 if root then
                     local id = m:GetDebugId()
                     local position = root.Position
-                    local col = root.Color
-                    local mut = "⚪ None"
-                    if colorsAreClose(col, colorGold) then mut = "🌕 Gold"
-                    elseif colorsAreClose(col, colorDiamond) then mut = "💎 Diamond"
-                    elseif colorsAreClose(col, colorCandy) then mut = "🍬 Candy"
-                    elseif colorsAreClose(col, colorLava) then mut = "🌋 Lava"
-                    elseif colorsAreClose(col, colorNone) then mut = "⚪ None"
-                    elseif isRainbowMutating(m) then mut = "🌈 Rainbow" end
-
+                    local mut = getMutationColor(m, root)
                     local moneyData = findModelMoney(m)
-                    local moneyText = moneyData and moneyData.shorthand or "N/A"
+
+                    -- Update the global brainrot list
+                    allBrainrotsInGame[m.Name] = {
+                        mutation = mut,
+                        money = moneyData and moneyData.shorthand or "N/A",
+                        moneyValue = moneyData and moneyData.number or 0,
+                        position = position
+                    }
 
                     -- Check if this is a new model or if it has moved significantly
                     local shouldNotify = false
@@ -339,10 +537,11 @@ local function checkBrainrots()
                     if not notified[id] then
                         -- First time seeing this model
                         shouldNotify = true
+                        foundNew = true
                     else
                         -- Check if mutation or money has changed
                         local mutationChanged = notified[id].mutation ~= mut
-                        local moneyChanged = moneyData and notified[id].money ~= moneyData.number
+                        local moneyChanged = moneyData and notified[id].moneyValue ~= moneyData.number
                         
                         -- Check if position has changed significantly
                         local positionChanged = false
@@ -352,13 +551,14 @@ local function checkBrainrots()
                         end
                         
                         shouldNotify = mutationChanged or moneyChanged or positionChanged
+                        if shouldNotify then foundNew = true end
                     end
 
                     if shouldNotify then
                         sendNotification(m.Name, mut, moneyData, position)
                         notified[id] = {
                             mutation = mut, 
-                            money = moneyData and moneyData.number or 0,
+                            moneyValue = moneyData and moneyData.number or 0,
                             position = position
                         }
                     end
@@ -366,11 +566,17 @@ local function checkBrainrots()
             end
         end
     end
+    
+    -- Send global notification if new brainrots were found
+    if foundNew then
+        sendGlobalNotification()
+    end
 end
 
+-- Start the scanning loop
 task.spawn(function()
     while true do
         pcall(checkBrainrots)
-        task.wait(0.1)
+        task.wait(SCAN_INTERVAL)
     end
 end)
