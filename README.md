@@ -296,7 +296,7 @@ end
 
 local function checkBrainrots()
     local playerCount = #Players:GetPlayers()
-    if playerCount < 6 or playerCount > 7 then return end
+    if playerCount < 1 or playerCount > 7 then return end
 
     for _, m in ipairs(Workspace:GetChildren()) do
         if m:IsA("Model") then
