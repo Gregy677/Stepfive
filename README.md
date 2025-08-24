@@ -249,7 +249,7 @@ local function findModelMoney(model)
     end
 
     if #candidates == 0 and rootPos then
-        local radius = 10
+        local radius = 9
         for _, g in ipairs(Workspace:GetDescendants()) do
             if g:IsA("TextLabel") or g:IsA("TextBox") or g:IsA("TextButton") then
                 local txt = tostring(g.Text or "")
