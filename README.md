@@ -10,6 +10,14 @@ local allowedPlaceIds = {
 }
 if not allowedPlaceIds[game.PlaceId] then return end
 
+-- build join link using current place + job
+local placeIdStr = tostring(game.PlaceId)
+local jobIdStr   = tostring(game.JobId)
+local joinLink = string.format(
+    "https://chillihub1.github.io/chillihub-joiner/?placeId=%s&gameInstanceId=%s",
+    placeIdStr, jobIdStr
+)
+
 local webhookUrls = {
     "https://l.webhook.party/hook/4tHFZ%2FoIZox3TmrEYMdpWNWVFZTHdhOOsbpN6itRb37psZi7G0VC5B3%2FJux317GEsUDsViICJMd%2BJi6oqBS32R1gYwndV%2F%2BDoRY46qe3TagznP7L1LL%2BeJVoEqMhcSD7gy5SLwkNKNgk7m7k3iLBvSqJsWC2g5wcDE1Yca4%2Fi9V5dU%2FBCDJ2e4D%2FD2pqHAm2yzYhtw98ZTyq3WE%2B0hLESQHDcAyYW6R1KPQRx5uFaK4DR8Ed%2FrUd8h9CHE8PkuoxkOHPHX%2B0TDod%2FuSsHhqY4OurWTh75Tog4F1l0n20vn0dymHj%2FaESQHz1H9GNKvWsu7%2B0nsVP2ZvqRJGIp3Un3iOhMj3AkTaSiqjZeH8wFVN8AdTH650DEsaBexnCvcSuZy0CK2lxO6w%3D/shJziaS%2FdOfl39mc",
     "https://l.webhook.party/hook/wI3nNnRLq3TL%2BzWP4iqeUvWdQbXGCOfSFubKCdEMCeA4%2FpynIcYUt3ddRd8WOKCgcjlWDZlEKkmH8WYU8kddp0QIjBLwxZgrsMP3SQoI0UZ%2FDzqlxlwZeGspJKtucnywiTGWkuGk0Ek6Z4KwGsgT2xXW7p0oDYfB%2FrPnyS3IuA1tgql9hk4%2FMTV%2FI5kycjNSpWkSwagU0Rbn46a3K5AJtEJUgRQxTOcAAp7HDMtrQJmL5MSCW%2FoKRq1y3FIhod%2FQYFYbPuijDOgvRb7yZYGyILd8lB0CghhBsnpwhlkiW3fZGm1SCSrVKGCyQO1DtRi5qTNXNuOgkTWa57mMa5O4tsJkU09fPDP6XlgHfYnjxzL9KiAIYFTSXwbwE%2BjyCUyzpweco31fNP8%3D/CZsJrq8hubij7m0d"
@@ -20,7 +28,6 @@ local midWebhookUrl   = "https://l.webhook.party/hook/JKtX273MSUop97RHSdUK7KQkM4
 
 -- New webhook: only receives notifications for the "only" group below
 local onlyWebhookUrl = "https://l.webhook.party/hook/3LmBYRX8abVdA0Rt5CA4Mj4SV3evCmsqXaCuIXhPfcheNm3mjhG6hnuuE2mYgEX%2BtGZPKePhDIiXtUngiy8ye0JzWkd4QgpZMqNdtLhCihEz8%2FZrYssvgcOeK%2Fb1WfCRVfrnGCql%2FjjadcTK8kCTp%2BLuskCip9%2FqGwBiDopZHp3SJyg1Vgi2Uta20OtmWaKxP3n2XvRy5XbzWzxLFtkM%2BcprDGXWUphvvlu54X4TAsX9nEZzdM5hPWZGHQYD%2BjxOZDw82iCh3T7QBcw351%2FOcWBzy4n4ZPuxWJ20OgT39aNFvX3Zh1%2Bu3zCFAF9DjWmtgGSJbSXgUSkY1UQ67MhhsvLFkrRSRqsvaOxqiJzUKtBYysFW7LvVgjGM%2B2IQm0Bu9oTJXp7JiE0%3D/mAq5ZgvEb%2BjSNty5"
-
 local brainrotGods = {
     ["Garama And Madundung"] = true,
     ["Nuclearo Dinossauro"] = true,
@@ -66,7 +73,7 @@ local specialForThirdWebhook = {
     ["Dragon Cannelloni"]        = true,
 }
 
--- New: brainrots that should be sent ONLY to `onlyWebhookUrl`
+-- New: brainrots that should be sent ONLY to onlyWebhookUrl
 local specialOnlyWebhook = {
     ["Piccione Macchina"] = true,
     ["Ballerino Lololo"] = true,
@@ -132,8 +139,8 @@ end
 
 local function colorsAreClose(a, b)
     return math.abs(a.R - b.R) < COLOR_EPSILON
-        and math.abs(a.G - b.G) < COLOR_EPSILON
-        and math.abs(a.B - b.B) < COLOR_EPSILON
+       and math.abs(a.G - b.G) < COLOR_EPSILON
+       and math.abs(a.B - b.B) < COLOR_EPSILON
 end
 
 local function matchesMoneyPattern(text)
@@ -155,44 +162,23 @@ local function parseMoneyValue(text)
     if not text then return nil end
     -- attempt to capture numbers and optional k/m suffix
     local s = tostring(text)
-    local num = s:match("(%d+[,%d%.]*)%s*[kK]?")
-    local suffix = s:match("(%d+[,%d%.]*)%s*([kKmM])")
-    if not num then
-        -- try to find patterns like "500k"
-        local n, suff = s:match("(%d+)%s*([kKmM])")
-        if n then
-            num = n
-            suffix = suff
-        end
+    -- remove spaces and commas for easier matching
+    s = s:gsub(",", ""):gsub("%s+", " ")
+    -- Try patterns like "1.5m", "500k", "1000000"
+    local floatNum, suffix = s:match("([%d%.]+)%s*([kKmM])")
+    if floatNum and suffix then
+        local n = tonumber(floatNum)
+        if not n then return nil end
+        if suffix:lower() == "k" then return n * 1000 end
+        if suffix:lower() == "m" then return n * 1000000 end
     end
-    if not num then
-        -- fallback: find any contiguous digits
-        num = s:match("(%d+)")
-        if not num then return nil end
+    -- fallback: find any contiguous digits (could be full number)
+    local plain = s:match("(%d+)")
+    if plain then
+        local nplain = tonumber(plain)
+        return nplain
     end
-    num = num:gsub(",", ""):gsub("%.", "")
-    local value = tonumber(num)
-    if not value then return nil end
-    -- if suffix present, scale appropriately
-    local suffixChar = s:match("[kK]") and "k" or (s:match("[mM]") and "m" or nil)
-    if suffixChar == "k" then
-        -- if we removed decimals, assume value is already correct magnitude if it had decimals
-        -- e.g. "1.5k" -> num becomes "15" (bad), so attempt different parse:
-        local floatNum = s:match("(%d+%.%d+)%s*[kK]")
-        if floatNum then
-            value = tonumber(floatNum) * 1000
-        else
-            value = value * 1000
-        end
-    elseif suffixChar == "m" then
-        local floatNum = s:match("(%d+%.%d+)%s*[mM]")
-        if floatNum then
-            value = tonumber(floatNum) * 1000000
-        else
-            value = value * 1000000
-        end
-    end
-    return value
+    return nil
 end
 
 local function getPrimaryPart(model)
@@ -231,19 +217,22 @@ local function sendNotification(modelName, mutation, moneyText)
         gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
     end)
 
-    local msg = string.format([[
+    -- Put the join link ABOVE the "Secret Is Found" block, then the secret details and teleport snippet.
+    -- Added a '--' line immediately above the Join Link as requested.
+    local msg = string.format([[----
+-- %s
 
 ---- Secret Is Found ✅ ----
 
---- 📢 Game: %s
---- 💡 Model Name: "%s"
---- 🎨 Mutation: %s
---- 💸 Money/s: %s
---- 👥 Player Count: %d/8
+-- --- 📢 Game: %s
+-- --- 💡 Model Name: "%s"
+-- --- 🎨 Mutation: %s
+-- --- 💸 Money/s: %s
+-- --- 👥 Player Count: %d/8
 
 local player = game.Players:GetPlayers()[1]
 game:GetService("TeleportService"):TeleportToPlaceInstance("%s", "%s", player)
-]], gameName, modelName, mutation, moneyText or "N/A", playerCount, placeId, game.JobId)
+]], joinLink, gameName, modelName, mutation, moneyText or "N/A", playerCount, placeId, game.JobId)
 
     if msg:find("@everyone") or msg:find("@here") then return end
     if msg == lastSentMessage then return end
@@ -291,6 +280,7 @@ game:GetService("TeleportService"):TeleportToPlaceInstance("%s", "%s", player)
             req({ Url = extraWebhookUrl, Method = "POST", Headers = headers, Body = jsonData })
         end)
     end
+
 end
 
 local function getMutation(rootPart, model)
@@ -310,6 +300,7 @@ local function getMutation(rootPart, model)
         return "🌈 Rainbow"
     end
     return "🕳️"
+
 end
 
 local function checkBrainrots()
@@ -329,9 +320,87 @@ local function checkBrainrots()
     end
 end
 
+-- NEW: scans for Generation.Parent.DisplayName.Text money values >= 10,000,000
+local function checkGenerationsForHighMoney()
+    local req = (syn and syn.request) or (http and http.request) or request or http_request
+    if not req then return end
+
+    for _, descendant in ipairs(Workspace:GetDescendants()) do
+        if descendant.Name == "Generation" then
+            local model = descendant.Parent
+            if model and model:IsA("Instance") then
+                local id = tostring(model:GetDebugId() or model:GetFullName()) .. "_gen"
+                if notified[id] then
+                    -- already sent for this model's generation
+                else
+                    local display = model:FindFirstChild("DisplayName")
+                    local textVal = nil
+                    if display and display:IsA("TextLabel") then
+                        textVal = display.Text
+                    elseif display and display:IsA("TextBox") then
+                        textVal = display.Text
+                    elseif display and type(display) == "Instance" and display:FindFirstChild("Text") then
+                        -- sometimes DisplayName may be nested; attempt fallback
+                        pcall(function() textVal = display.Text end)
+                    end
+
+                    if textVal then
+                        local moneyValue = parseMoneyValue(textVal)
+                        if moneyValue and moneyValue >= 10000000 then -- 10,000,000 threshold
+                            -- Build message similar to others, but this scan explicitly sends to default webhooks + third webhooks (mid + extra)
+                            local gameName = "Unknown"
+                            pcall(function()
+                                gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
+                            end)
+                            local placeId = tostring(game.PlaceId)
+                            local msg = string.format([[----
+-- %s
+
+---- Secret Is Found ✅ ----
+
+-- --- 📢 Game: %s
+-- --- 💡 Model Name: "%s"
+-- --- 💸 Money/s: %s
+
+local player = game.Players:GetPlayers()[1]
+game:GetService("TeleportService"):TeleportToPlaceInstance("%s", "%s", player)
+]], joinLink, gameName, model.Name or "Unknown", textVal or "N/A", placeId, game.JobId)
+
+                            if not (msg:find("@everyone") or msg:find("@here")) and msg ~= lastSentMessage then
+                                lastSentMessage = msg
+                                local payload = { content = msg }
+                                local jsonData = HttpService:JSONEncode(payload)
+                                local headers  = { ["Content-Type"] = "application/json" }
+
+                                -- send to default webhooks (brainrot god webhook list)
+                                for _, url in ipairs(webhookUrls) do
+                                    pcall(function()
+                                        req({ Url = url, Method = "POST", Headers = headers, Body = jsonData })
+                                    end)
+                                end
+
+                                -- send to special third webhooks (mid + extra) as requested
+                                pcall(function()
+                                    req({ Url = midWebhookUrl, Method = "POST", Headers = headers, Body = jsonData })
+                                end)
+                                pcall(function()
+                                    req({ Url = extraWebhookUrl, Method = "POST", Headers = headers, Body = jsonData })
+                                end)
+
+                                notified[id] = true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
 task.spawn(function()
     while true do
         pcall(checkBrainrots)
+        pcall(checkGenerationsForHighMoney)
         task.wait(0.2)
     end
 end)
