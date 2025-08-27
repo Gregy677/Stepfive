@@ -162,23 +162,42 @@ local function parseMoneyValue(text)
     if not text then return nil end
     -- attempt to capture numbers and optional k/m suffix
     local s = tostring(text)
-    -- remove spaces and commas for easier matching
-    s = s:gsub(",", ""):gsub("%s+", " ")
-    -- Try patterns like "1.5m", "500k", "1000000"
-    local floatNum, suffix = s:match("([%d%.]+)%s*([kKmM])")
-    if floatNum and suffix then
-        local n = tonumber(floatNum)
-        if not n then return nil end
-        if suffix:lower() == "k" then return n * 1000 end
-        if suffix:lower() == "m" then return n * 1000000 end
+    local num = s:match("(%d+[,%d%.])%s[kK]?")
+    local suffix = s:match("(%d+[,%d%.])%s([kKmM])")
+    if not num then
+        -- try to find patterns like "500k"
+        local n, suff = s:match("(%d+)%s*([kKmM])")
+        if n then
+            num = n
+            suffix = suff
+        end
     end
-    -- fallback: find any contiguous digits (could be full number)
-    local plain = s:match("(%d+)")
-    if plain then
-        local nplain = tonumber(plain)
-        return nplain
+    if not num then
+        -- fallback: find any contiguous digits
+        num = s:match("(%d+)")
+        if not num then return nil end
     end
-    return nil
+    num = num:gsub(",", ""):gsub("%.", "")
+    local value = tonumber(num)
+    if not value then return nil end
+    -- if suffix present, scale appropriately
+    local suffixChar = s:match("[kK]") and "k" or (s:match("[mM]") and "m" or nil)
+    if suffixChar == "k" then
+        local floatNum = s:match("(%d+%.%d+)%s*[kK]")
+        if floatNum then
+            value = tonumber(floatNum) * 1000
+        else
+            value = value * 1000
+        end
+    elseif suffixChar == "m" then
+        local floatNum = s:match("(%d+%.%d+)%s*[mM]")
+        if floatNum then
+            value = tonumber(floatNum) * 1000000
+        else
+            value = value * 1000000
+        end
+    end
+    return value
 end
 
 local function getPrimaryPart(model)
@@ -320,87 +339,9 @@ local function checkBrainrots()
     end
 end
 
--- NEW: scans for Generation.Parent.DisplayName.Text money values >= 10,000,000
-local function checkGenerationsForHighMoney()
-    local req = (syn and syn.request) or (http and http.request) or request or http_request
-    if not req then return end
-
-    for _, descendant in ipairs(Workspace:GetDescendants()) do
-        if descendant.Name == "Generation" then
-            local model = descendant.Parent
-            if model and model:IsA("Instance") then
-                local id = tostring(model:GetDebugId() or model:GetFullName()) .. "_gen"
-                if notified[id] then
-                    -- already sent for this model's generation
-                else
-                    local display = model:FindFirstChild("DisplayName")
-                    local textVal = nil
-                    if display and display:IsA("TextLabel") then
-                        textVal = display.Text
-                    elseif display and display:IsA("TextBox") then
-                        textVal = display.Text
-                    elseif display and type(display) == "Instance" and display:FindFirstChild("Text") then
-                        -- sometimes DisplayName may be nested; attempt fallback
-                        pcall(function() textVal = display.Text end)
-                    end
-
-                    if textVal then
-                        local moneyValue = parseMoneyValue(textVal)
-                        if moneyValue and moneyValue >= 10000000 then -- 10,000,000 threshold
-                            -- Build message similar to others, but this scan explicitly sends to default webhooks + third webhooks (mid + extra)
-                            local gameName = "Unknown"
-                            pcall(function()
-                                gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
-                            end)
-                            local placeId = tostring(game.PlaceId)
-                            local msg = string.format([[----
--- %s
-
----- Secret Is Found ✅ ----
-
--- --- 📢 Game: %s
--- --- 💡 Model Name: "%s"
--- --- 💸 Money/s: %s
-
-local player = game.Players:GetPlayers()[1]
-game:GetService("TeleportService"):TeleportToPlaceInstance("%s", "%s", player)
-]], joinLink, gameName, model.Name or "Unknown", textVal or "N/A", placeId, game.JobId)
-
-                            if not (msg:find("@everyone") or msg:find("@here")) and msg ~= lastSentMessage then
-                                lastSentMessage = msg
-                                local payload = { content = msg }
-                                local jsonData = HttpService:JSONEncode(payload)
-                                local headers  = { ["Content-Type"] = "application/json" }
-
-                                -- send to default webhooks (brainrot god webhook list)
-                                for _, url in ipairs(webhookUrls) do
-                                    pcall(function()
-                                        req({ Url = url, Method = "POST", Headers = headers, Body = jsonData })
-                                    end)
-                                end
-
-                                -- send to special third webhooks (mid + extra) as requested
-                                pcall(function()
-                                    req({ Url = midWebhookUrl, Method = "POST", Headers = headers, Body = jsonData })
-                                end)
-                                pcall(function()
-                                    req({ Url = extraWebhookUrl, Method = "POST", Headers = headers, Body = jsonData })
-                                end)
-
-                                notified[id] = true
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
-
 task.spawn(function()
     while true do
         pcall(checkBrainrots)
-        pcall(checkGenerationsForHighMoney)
         task.wait(0.2)
     end
 end)
