@@ -13,6 +13,15 @@ local placeId = game.PlaceId
 
 local req = (syn and syn.request) or (http and http.request) or (http_request) or (fluxus and fluxus.request) or request
 
+-- Build Chilli Hub join link
+local function getChilliHubJoinLink(jobId)
+    return string.format(
+        "https://chillihub1.github.io/chillihub-joiner/?placeId=%s&gameInstanceId=%s",
+        tostring(placeId),
+        tostring(jobId)
+    )
+end
+
 -- Send Webhook
 local function sendWebhook(url, petFound, moneyPerSec, tag, mutation, jobId, pingEveryone, playerCount)
     local data = {
@@ -26,7 +35,7 @@ local function sendWebhook(url, petFound, moneyPerSec, tag, mutation, jobId, pin
                 {["name"] = "🏷️ Tag", ["value"] = tag, ["inline"] = true},
                 {["name"] = "🧬 Mutation", ["value"] = mutation, ["inline"] = true},
                 {["name"] = "👥 Player Count", ["value"] = tostring(playerCount) .. "/8", ["inline"] = true},
-                {["name"] = "Join Link", ["value"] = "[Join Here](https://www.roblox.com/games/start?placeId="..placeId.."&launchData="..jobId..")", ["inline"] = false},
+                {["name"] = "Join Link", ["value"] = "[Join Here]("..getChilliHubJoinLink(jobId)..")", ["inline"] = false},
                 {["name"] = "🆔 Job ID (Mobile)", ["value"] = "``"..jobId.."``", ["inline"] = false},
                 {["name"] = "🆔 Job ID (PC)", ["value"] = "```"..jobId.."```", ["inline"] = false},
                 {["name"] = "Join Server",
