@@ -8,8 +8,8 @@ local allowedPlaceId = 109983668079237
 if game.PlaceId ~= allowedPlaceId then return end
 
 -- ✅ Webhooks
-local UnderTen = "https://discord.com/api/webhooks/1403158157798408282/aQuEVITwhbCOEQ3HiwhupRivEaJGM2DlfTuaIPJRIZwZZs25xfArlyZFGS9xKucxkuxD" -- under 1M
-local Between500AndOneM = "https://discord.com/api/webhooks/1410650201739366442/vqkmydnw98-lEpalqBlffNTwhPDGnKUUABUH21QuRzNaIiRtLlumw4OE2W1JRxJmWUHA" -- 500–1M
+local UnderTen = "https://discord.com/api/webhooks/1403158157798408282/aQuEVITwhbCOEQ3HiwhupRivEaJGM2DlfTuaIPJRIZwZZs25xfArlyZFGS9xKucxkuxD" -- under 100k
+local Between100kAnd1M = "https://discord.com/api/webhooks/1410650201739366442/vqkmydnw98-lEpalqBlffNTwhPDGnKUUABUH21QuRzNaIiRtLlumw4OE2W1JRxJmWUHA" -- 100k–1M
 local OverTen = "https://discord.com/api/webhooks/1403467926333427883/5GDaRTMPtKaLwINprYyj_WDMiZPHbyn8OwhCK89nrLmF7n074y6DJFZf8o4dfn-K4qYf" -- over 10M
 
 local embedColor = 3447003
@@ -96,7 +96,7 @@ for _, v in pairs(workspace:GetDescendants()) do
         local value = convertTextToNumber(originalText)
         local playerCount = getPlayerCount()
         
-        if playerCount >= 6 and playerCount <= 8 and value >= 500 then
+        if playerCount >= 6 and playerCount <= 8 and value >= 100000 then
             local petFound = v.Parent.DisplayName.Text
             local moneyPerSec = v.Text
             local tag = v.Parent.Rarity.Text
@@ -109,10 +109,10 @@ for _, v in pairs(workspace:GetDescendants()) do
             end
             
             local webhookUrl, shouldPing
-            if value >= 500 and value < 1_000_000 then
-                webhookUrl = Between500AndOneM
+            if value >= 100000 and value < 1000000 then
+                webhookUrl = Between100kAnd1M
                 shouldPing = false
-            elseif value >= 10_000_000 then
+            elseif value >= 10000000 then
                 webhookUrl = OverTen
                 shouldPing = true
             else
@@ -149,5 +149,5 @@ for _, webhookData in pairs(webhooksToSend) do
 end
 
 if #webhooksToSend > 0 then
-    print("Sent", #webhooksToSend, "webhooks (500+, includes 500–1M new range).")
+    print("Sent", #webhooksToSend, "webhooks (includes new 100k–1M range).")
 end
