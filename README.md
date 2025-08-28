@@ -1,17 +1,19 @@
 repeat task.wait() until workspace:FindFirstChild("Plots")
+
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
--- Only run in this specific Place ID
-local allowedPlaceId = 109983668079237 -- <-- Replace with your game's place ID
+-- ✅ Replace with your own PlaceId
+local allowedPlaceId = 109983668079237
 if game.PlaceId ~= allowedPlaceId then return end
 
-local UnderTen = "https://discord.com/api/webhooks/1403158157798408282/aQuEVITwhbCOEQ3HiwhupRivEaJGM2DlfTuaIPJRIZwZZs25xfArlyZFGS9xKucxkuxD" -- webhook for under 10m
-local OverTen = "https://discord.com/api/webhooks/1403467926333427883/5GDaRTMPtKaLwINprYyj_WDMiZPHbyn8OwhCK89nrLmF7n074y6DJFZf8o4dfn-K4qYf"  -- webhook for over 10m
+-- ✅ Webhooks
+local UnderTen = "https://discord.com/api/webhooks/1403158157798408282/aQuEVITwhbCOEQ3HiwhupRivEaJGM2DlfTuaIPJRIZwZZs25xfArlyZFGS9xKucxkuxD" -- under 1M
+local Between500AndOneM = "https://discord.com/api/webhooks/1410650201739366442/vqkmydnw98-lEpalqBlffNTwhPDGnKUUABUH21QuRzNaIiRtLlumw4OE2W1JRxJmWUHA" -- 500–1M
+local OverTen = "https://discord.com/api/webhooks/1403467926333427883/5GDaRTMPtKaLwINprYyj_WDMiZPHbyn8OwhCK89nrLmF7n074y6DJFZf8o4dfn-K4qYf" -- over 10M
+
 local embedColor = 3447003
 local placeId = game.PlaceId
-
-local req = (syn and syn.request) or (http and http.request) or (http_request) or (fluxus and fluxus.request) or request
 
 -- Build Chilli Hub join link
 local function getChilliHubJoinLink(jobId)
@@ -51,13 +53,7 @@ local function sendWebhook(url, petFound, moneyPerSec, tag, mutation, jobId, pin
     end
     
     local jsonData = HttpService:JSONEncode(data)
-    
-    req({
-        Url = url,
-        Method = "POST",
-        Headers = {["Content-Type"] = "application/json"},
-        Body = jsonData
-    })
+    HttpService:PostAsync(url, jsonData, Enum.HttpContentType.ApplicationJson)
 end
 
 -- Convert money text to number
@@ -69,7 +65,6 @@ local function convertTextToNumber(text)
     text = text:gsub("%$", ""):gsub("/s", ""):gsub("%s+", "")
     
     local multiplier = 1
-    
     if text:upper():find("K$") then
         multiplier = 1e3
         text = text:gsub("[Kk]$", "")
@@ -84,8 +79,7 @@ local function convertTextToNumber(text)
         text = text:gsub("[Tt]$", "")
     end
     
-    local num = tonumber(text) or 0
-    return num * multiplier
+    return (tonumber(text) or 0) * multiplier
 end
 
 -- Count players
@@ -102,67 +96,58 @@ for _, v in pairs(workspace:GetDescendants()) do
         local value = convertTextToNumber(originalText)
         local playerCount = getPlayerCount()
         
-        -- Only send if player count is 6 or 7
-        if playerCount >= 6 and playerCount <= 8 and value >= 1000000 then
-            local success, result = pcall(function()
-                local petFound = v.Parent.DisplayName.Text
-                local moneyPerSec = v.Text
-                local tag = v.Parent.Rarity.Text
-                local jobId = game.JobId
-                
-                local mutation = "None"
-                local mutationTag = v.Parent:FindFirstChild("Mutation")
-                if mutationTag and mutationTag.Visible then
-                    mutation = mutationTag.Text
-                end
-                
-                return petFound, moneyPerSec, tag, mutation, jobId
-            end)
+        if playerCount >= 6 and playerCount <= 8 and value >= 500 then
+            local petFound = v.Parent.DisplayName.Text
+            local moneyPerSec = v.Text
+            local tag = v.Parent.Rarity.Text
+            local jobId = game.JobId
             
-            if success then
-                local petFound, moneyPerSec, tag, mutation, jobId = result, v.Text, v.Parent.Rarity.Text, "None", game.JobId
-                
-                local mutationTag = v.Parent:FindFirstChild("Mutation")
-                if mutationTag and mutationTag.Visible then
-                    mutation = mutationTag.Text
-                end
-                
-                local webhookUrl, shouldPing
-                if petFound:lower() == "lucky block" then
-                    if tag:lower() == "secret" then
-                        webhookUrl = OverTen
-                        shouldPing = false
-                    else
-                        webhookUrl = UnderTen
-                        shouldPing = false
-                    end
-                else
-                    webhookUrl = value >= 10000000 and OverTen or UnderTen
-                    shouldPing = value >= 10000000
-                end
-                
-                table.insert(webhooksToSend, {
-                    url = webhookUrl,
-                    petFound = petFound,
-                    moneyPerSec = moneyPerSec,
-                    tag = tag,
-                    mutation = mutation,
-                    jobId = jobId,
-                    pingEveryone = shouldPing,
-                    playerCount = playerCount
-                })
-            else
-                warn("Error accessing pet data:", result)
+            local mutation = "None"
+            local mutationTag = v.Parent:FindFirstChild("Mutation")
+            if mutationTag and mutationTag.Visible then
+                mutation = mutationTag.Text
             end
+            
+            local webhookUrl, shouldPing
+            if value >= 500 and value < 1_000_000 then
+                webhookUrl = Between500AndOneM
+                shouldPing = false
+            elseif value >= 10_000_000 then
+                webhookUrl = OverTen
+                shouldPing = true
+            else
+                webhookUrl = UnderTen
+                shouldPing = false
+            end
+            
+            table.insert(webhooksToSend, {
+                url = webhookUrl,
+                petFound = petFound,
+                moneyPerSec = moneyPerSec,
+                tag = tag,
+                mutation = mutation,
+                jobId = jobId,
+                pingEveryone = shouldPing,
+                playerCount = playerCount
+            })
         end
     end
 end
 
 for _, webhookData in pairs(webhooksToSend) do
-    sendWebhook(webhookData.url, webhookData.petFound, webhookData.moneyPerSec, webhookData.tag, webhookData.mutation, webhookData.jobId, webhookData.pingEveryone, webhookData.playerCount)
+    sendWebhook(
+        webhookData.url,
+        webhookData.petFound,
+        webhookData.moneyPerSec,
+        webhookData.tag,
+        webhookData.mutation,
+        webhookData.jobId,
+        webhookData.pingEveryone,
+        webhookData.playerCount
+    )
     task.wait(0.1)
 end
 
 if #webhooksToSend > 0 then
-    print("Sent", #webhooksToSend, "webhooks for player count 6–7.")
+    print("Sent", #webhooksToSend, "webhooks (500+, includes 500–1M new range).")
 end
