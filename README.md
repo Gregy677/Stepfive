@@ -8,6 +8,10 @@ if game.PlaceId ~= allowedPlaceId then return end
 
 local UnderTen = "https://discord.com/api/webhooks/1403158157798408282/aQuEVITwhbCOEQ3HiwhupRivEaJGM2DlfTuaIPJRIZwZZs25xfArlyZFGS9xKucxkuxD" -- webhook for under 10m
 local OverTen = "https://discord.com/api/webhooks/1403467926333427883/5GDaRTMPtKaLwINprYyj_WDMiZPHbyn8OwhCK89nrLmF7n074y6DJFZf8o4dfn-K4qYf"  -- webhook for over 10m
+
+-- 🔗 Your Replit API endpoint
+local replitApiEndpoint = "https://8d93f3f5-a95f-4cc1-84d9-5d3dfb8650f5-00-3iq0togrerm7d.riker.replit.dev/api"
+
 local embedColor = 3447003
 local placeId = game.PlaceId
 
@@ -20,6 +24,43 @@ local function getChilliHubJoinLink(jobId)
         tostring(placeId),
         tostring(jobId)
     )
+end
+
+-- Send to Replit API for GUI updates
+local function sendToReplitAPI(petsFound, jobId, playerCount)
+    if #petsFound == 0 then return end
+    
+    local jsonData = HttpService:JSONEncode({
+        ["pets"] = petsFound,
+        ["jobId"] = jobId,
+        ["placeId"] = game.PlaceId,
+        ["timestamp"] = os.time(),
+        ["isPrivate"] = false,
+        ["playerCount"] = playerCount,
+        ["maxPlayers"] = Players.MaxPlayers
+    })
+
+    if req then
+        local success, response = pcall(function()
+            return req({
+                Url = replitApiEndpoint,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] = "application/json",
+                    ["Authorization"] = "Bearer roblox-pet-scanner"
+                },
+                Body = jsonData
+            })
+        end)
+        
+        if success and response then
+            print("✅ Successfully sent " .. #petsFound .. " pets to Replit API")
+        else
+            warn("❌ Failed to send pets to Replit API")
+        end
+    else
+        warn("❌ HTTP request function not available")
+    end
 end
 
 -- Send Webhook
@@ -95,6 +136,7 @@ end
 
 -- Collect and send webhooks
 local webhooksToSend = {}
+local petsForReplit = {} -- New: collect pets for Replit API
 
 for _, v in pairs(workspace:GetDescendants()) do
     if v:IsA("TextLabel") and v.Name == "Generation" then
@@ -127,6 +169,13 @@ for _, v in pairs(workspace:GetDescendants()) do
                     mutation = mutationTag.Text
                 end
                 
+                -- Format pet info for Replit API
+                local petInfo = string.format("%s (%s, %s)", petFound, moneyPerSec, tag)
+                if mutation ~= "None" then
+                    petInfo = petInfo .. " [" .. mutation .. "]"
+                end
+                table.insert(petsForReplit, petInfo)
+                
                 local webhookUrl, shouldPing
                 if petFound:lower() == "lucky block" then
                     if tag:lower() == "secret" then
@@ -158,6 +207,12 @@ for _, v in pairs(workspace:GetDescendants()) do
     end
 end
 
+-- Send to Replit API first (for GUI updates)
+if #petsForReplit > 0 then
+    sendToReplitAPI(petsForReplit, game.JobId, getPlayerCount())
+end
+
+-- Send original Discord webhooks
 for _, webhookData in pairs(webhooksToSend) do
     sendWebhook(webhookData.url, webhookData.petFound, webhookData.moneyPerSec, webhookData.tag, webhookData.mutation, webhookData.jobId, webhookData.pingEveryone, webhookData.playerCount)
     task.wait(0.1)
@@ -165,4 +220,5 @@ end
 
 if #webhooksToSend > 0 then
     print("Sent", #webhooksToSend, "webhooks for player count 6–7.")
+    print("Also sent", #petsForReplit, "pets to Replit API for GUI updates.")
 end
