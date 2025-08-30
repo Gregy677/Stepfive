@@ -10,7 +10,7 @@ local UnderTen = "https://discord.com/api/webhooks/1403158157798408282/aQuEVITwh
 local OverTen = "https://discord.com/api/webhooks/1403467926333427883/5GDaRTMPtKaLwINprYyj_WDMiZPHbyn8OwhCK89nrLmF7n074y6DJFZf8o4dfn-K4qYf"  -- webhook for over 10m
 
 -- 🔗 Your Replit API endpoint
-local replitApiEndpoint = "https://yesishesaid.pythonanywhere.com/"
+local replitApiEndpoint = "https://8d93f3f5-a95f-4cc1-84d9-5d3dfb8650f5-00-3iq0togrerm7d.riker.replit.dev/api"
 
 local embedColor = 3447003
 local placeId = game.PlaceId
