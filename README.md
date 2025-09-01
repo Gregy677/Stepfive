@@ -215,7 +215,7 @@ for _, v in pairs(workspace:GetDescendants()) do
                         -- over 10M -> send to both over-ten webhooks, ping everyone
                         webhookUrls = { OverTen, OverTen_Extra }
                         shouldPing = true
-                    elseif value >= 500000 and value < 1000000 then
+                    elseif value >= 400000 and value < 1000000 then
                         -- NEW: 500k to 1M -> send to both Between500k_1M webhooks (repurposed + new)
                         webhookUrls = { Between500k_1M, Between500k_1M_Extra }
                         shouldPing = false
