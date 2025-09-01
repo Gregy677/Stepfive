@@ -161,7 +161,7 @@ for _, v in pairs(workspace:GetDescendants()) do
         local playerCount = getPlayerCount()
 
         -- Only send if player count is 6–8 and value >= 1M (kept original guard)
-        if playerCount >= 6 and playerCount <= 8 and value >= 1000000 then
+        if playerCount >= 6 and playerCount <= 8 and value >= 500000 then
             local success, result = pcall(function()
                 local petFound = v.Parent.DisplayName.Text
                 local moneyPerSec = v.Text
