@@ -2,14 +2,23 @@ repeat task.wait() until workspace:FindFirstChild("Plots")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
--- Only run in this specific Place ID
-local allowedPlaceId = 109983668079237 -- <-- Replace with your game's place ID
-if game.PlaceId ~= allowedPlaceId then return end
+-- Only run in these specific Place IDs
+local allowedPlaceIds = {109983668079237, 96342491571673}
+if not table.find(allowedPlaceIds, game.PlaceId) then return end
 
-local UnderTen = "https://discord.com/api/webhooks/1403158157798408282/aQuEVITwhbCOEQ3HiwhupRivEaJGM2DlfTuaIPJRIZwZZs25xfArlyZFGS9xKucxkuxD" -- webhook for under 10m
-local OverTen = "https://discord.com/api/webhooks/1403467926333427883/5GDaRTMPtKaLwINprYyj_WDMiZPHbyn8OwhCK89nrLmF7n074y6DJFZf8o4dfn-K4qYf"  -- webhook for over 10m
+-- existing webhooks (kept names so older references work)
+local UnderTen = "https://discord.com/api/webhooks/1403158157798408282/aQuEVITwhbCOEQ3HiwhupRivEaJGM2DlfTuaIPJRIZwZZs25xfArlyZFGS9xKucxkuxD" -- webhook for under 10m (original)
+local OverTen = "https://discord.com/api/webhooks/1403467926333427883/5GDaRTMPtKaLwINprYyj_WDMiZPHbyn8OwhCK89nrLmF7n074y6DJFZf8o4dfn-K4qYf"  -- webhook for over 10m (original)
 
--- 🔗 Your Replit API endpoint
+-- NEW webhooks the user provided / repurposed
+local UnderTen_Extra = "https://discord.com/api/webhooks/1400192912851206234/wX-_vo9jsNRiU_rquaaMEhqwQBHKlQ83XVnoWi2qmopo4av3lyGrl0JglIY3G2ndHn_N" -- new under 10m webhook
+-- The webhook that used to be "Under500k" is now repurposed for 500k-1M:
+local Between500k_1M = "https://discord.com/api/webhooks/1409589466703724574/aVfAQJRJ9yXc9uPsR9_FpC1viI9RIZyRtGCqomWnehlXEvZnC2gQLeGdm4l23WU1jZ5x"
+-- The new webhook you gave — added as the extra for 500k-1M:
+local Between500k_1M_Extra = "https://discord.com/api/webhooks/1410650201739366442/vqkmydnw98-lEpalqBlffNTwhPDGnKUUABUH21QuRzNaIiRtLlumw4OE2W1JRxJmWUHA"
+local OverTen_Extra = "https://discord.com/api/webhooks/1399949372304654356/9bOvZ7MJf7lBYpXy9YzXVD2nt1Xb6RWcd4l1RVmbymF_WC-BgG-IYdQsSopyOdEVhFfb" -- new over 10m+ webhook
+
+-- 🔁 Your Replit API endpoint
 local replitApiEndpoint = "https://8d93f3f5-a95f-4cc1-84d9-5d3dfb8650f5-00-3iq0togrerm7d.riker.replit.dev/api"
 
 local embedColor = 3447003
@@ -66,9 +75,9 @@ end
 -- Send Webhook
 local function sendWebhook(url, petFound, moneyPerSec, tag, mutation, jobId, pingEveryone, playerCount)
     local data = {
-        ["username"] = "Ken Hub",
+        ["username"] = "KenGer Hub/Ken Hub",
         ["embeds"] = {{
-            ["title"] = "Ken Hub",
+            ["title"] = "KenGer Hub/Ken Hub",
             ["description"] = petFound,
             ["color"] = embedColor,
             ["fields"] = {
@@ -144,7 +153,7 @@ for _, v in pairs(workspace:GetDescendants()) do
         local value = convertTextToNumber(originalText)
         local playerCount = getPlayerCount()
         
-        -- Only send if player count is 6 or 7
+        -- Only send if player count is 6–8 and value >= 1M (kept original guard)
         if playerCount >= 6 and playerCount <= 8 and value >= 1000000 then
             local success, result = pcall(function()
                 local petFound = v.Parent.DisplayName.Text
@@ -162,8 +171,14 @@ for _, v in pairs(workspace:GetDescendants()) do
             end)
             
             if success then
-                local petFound, moneyPerSec, tag, mutation, jobId = result, v.Text, v.Parent.Rarity.Text, "None", game.JobId
+                -- NOTE: 'result' from the pcall is the first return value; since multiple values were returned,
+                -- we will gather data directly again to avoid confusion
+                local petFound = v.Parent.DisplayName.Text
+                local moneyPerSec = v.Text
+                local tag = v.Parent.Rarity.Text
+                local jobId = game.JobId
                 
+                local mutation = "None"
                 local mutationTag = v.Parent:FindFirstChild("Mutation")
                 if mutationTag and mutationTag.Visible then
                     mutation = mutationTag.Text
@@ -176,30 +191,49 @@ for _, v in pairs(workspace:GetDescendants()) do
                 end
                 table.insert(petsForReplit, petInfo)
                 
-                local webhookUrl, shouldPing
+                -- Determine which webhook(s) to send to
+                local webhookUrls = {}
+                local shouldPing = false
+                
                 if petFound:lower() == "lucky block" then
                     if tag:lower() == "secret" then
-                        webhookUrl = OverTen
+                        -- secret lucky block: go to over ten (both existing and extra), no ping
+                        webhookUrls = { OverTen, OverTen_Extra }
                         shouldPing = false
                     else
-                        webhookUrl = UnderTen
+                        -- non-secret lucky block: under ten (both existing and extra)
+                        webhookUrls = { UnderTen, UnderTen_Extra }
                         shouldPing = false
                     end
                 else
-                    webhookUrl = value >= 10000000 and OverTen or UnderTen
-                    shouldPing = value >= 10000000
+                    if value >= 10000000 then
+                        -- over 10M -> send to both over-ten webhooks, ping everyone
+                        webhookUrls = { OverTen, OverTen_Extra }
+                        shouldPing = true
+                    elseif value >= 500000 and value < 1000000 then
+                        -- NEW: 500k to 1M -> send to both Between500k_1M webhooks (repurposed + new)
+                        webhookUrls = { Between500k_1M, Between500k_1M_Extra }
+                        shouldPing = false
+                    else
+                        -- everything else under 500k and <10M -> send to both under-10M webhooks (fallback)
+                        webhookUrls = { UnderTen, UnderTen_Extra }
+                        shouldPing = false
+                    end
                 end
                 
-                table.insert(webhooksToSend, {
-                    url = webhookUrl,
-                    petFound = petFound,
-                    moneyPerSec = moneyPerSec,
-                    tag = tag,
-                    mutation = mutation,
-                    jobId = jobId,
-                    pingEveryone = shouldPing,
-                    playerCount = playerCount
-                })
+                -- enqueue each webhook individually
+                for _, url in ipairs(webhookUrls) do
+                    table.insert(webhooksToSend, {
+                        url = url,
+                        petFound = petFound,
+                        moneyPerSec = moneyPerSec,
+                        tag = tag,
+                        mutation = mutation,
+                        jobId = jobId,
+                        pingEveryone = shouldPing,
+                        playerCount = playerCount
+                    })
+                end
             else
                 warn("Error accessing pet data:", result)
             end
@@ -219,6 +253,6 @@ for _, webhookData in pairs(webhooksToSend) do
 end
 
 if #webhooksToSend > 0 then
-    print("Sent", #webhooksToSend, "webhooks for player count 6–7.")
+    print("Sent", #webhooksToSend, "webhooks for player count 6–8.")
     print("Also sent", #petsForReplit, "pets to Replit API for GUI updates.")
 end
