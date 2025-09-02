@@ -78,7 +78,7 @@ end
 -- Send Webhook
 local function sendWebhook(url, petFound, moneyPerSec, tag, mutation, jobId, pingEveryone, playerCount)
     local data = {
-        ["username"] = "KenGer Hub/Ken Hub",
+        ["username"] = "Ken Hub|Notifier",
         ["embeds"] = {{
             ["title"] = "KenGer Hub/Ken Hub",
             ["description"] = petFound,
