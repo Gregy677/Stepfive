@@ -18,7 +18,7 @@ local Between500k_1M_Extra = "https://discord.com/api/webhooks/14106502017393664
 local OverTen_Extra = "https://discord.com/api/webhooks/1399949372304654356/9bOvZ7MJf7lBYpXy9YzXVD2nt1Xb6RWcd4l1RVmbymF_WC-BgG-IYdQsSopyOdEVhFfb" -- new over 10m+ webhook
 
 --  Your Replit API endpoint
-local replitApiEndpoint = "https://8d93f3f5-a95f-4cc1-84d9-5d3dfb8650f5-00-3iq0togrerm7d.riker.replit.dev/api"
+local replitApiEndpoint = "https://a6d0e326-2203-4bfd-8570-662c180ae2f2-00-1jro9lfbubnqq.picard.replit.dev/api"
 
 local embedColor = 3447003
 local placeId = game.PlaceId
